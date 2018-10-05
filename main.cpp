@@ -2,34 +2,54 @@
 #include "ZLServer.h"
 
 #include <glib.h>
-
+#include <syslog.h>
+typedef struct _ApplicationState ApplicationState;
+struct _ApplicationState {
+  GMainContext *ctx;
+  ZLServer *zls;
+};
 /* add callback into GLib Main Event Loop. */
-void listenChannel (int fd, GSourceFunc func);
+void listenChannel (ApplicationState *state, int fd, GSourceFunc func);
 /* callback method for socket accept. */
-gboolean socket_connecting (GIOChannel *channel);
+gboolean socket_connecting (ApplicationState *state);
 /* callback method for socket accept. */
-gboolean socket_communite (GIOChannel *channel);
+gboolean socket_communite (ApplicationState *state);
 
 /*timeout 调用函数*/
 static gboolean
 application_iterate(ZLServer *server);
 
 #define ITERATION_PERIOD 50
+static GMainLoop *loop;
+
+/* ctrl+c 结束程序处理函数 */
+static void close_sigint (int dummy)
+{
+  syslog (LOG_INFO, "Ctrl+c 终止进程...\n");
+
+	g_main_loop_quit (loop); //Stops a GMainLoop from running. 
+}
 
 int main() {
-  guint timer_source_id;
-  ZLServer *zls = new ZLServer(port);
-  int fd = zls->listen();
-  listenChannel(fd, (GSourceFunc)socket_connecting);
-  timer_source_id = g_timeout_add(ITERATION_PERIOD,
-                                  (GSourceFunc)application_iterate, zls);
+	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
+  ApplicationState state;
+  state.ctx = g_main_context_new();
+
+  ZLDefine zld;
+  state.zls = zld.createServer();
+  int fd = state.zls->listenZL();
+  listenChannel(&state, fd, (GSourceFunc)socket_connecting);
+  g_timeout_add(ITERATION_PERIOD,
+                                  (GSourceFunc)application_iterate, state.zls);
+	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
+	g_main_context_unref (state.ctx); //Decreases the reference count on a GMainContext object by one.
   return 0;
 }
 
 /*-----------------------------------------
  * add callback into GLib Main Event Loop.
 -----------------------------------------*/
-void listenChannel (int fd, GSourceFunc func) 
+void listenChannel (ApplicationState *state, int fd, GSourceFunc func) 
 {
 	GIOChannel *channel;
 	GSource *source;
@@ -41,8 +61,8 @@ void listenChannel (int fd, GSourceFunc func)
 	sprintf (name, "source'fd = %d", fd);
 	g_source_set_name (source, name); //Sets a name for the source, test ***
 
-	g_source_set_callback (source, func, channel, NULL); //Sets the callback function for a source.
-	g_source_attach (source, g_ctx); //attach source to context (g_ctx)
+	g_source_set_callback (source, func, state, NULL); //Sets the callback function for a source.
+	g_source_attach (source, state->ctx); //attach source to context (g_ctx)
 
 	/*the loop has an internal reference so we'll drop ours*/
 	g_io_channel_unref (channel); //Decrements the reference count of a GIOChannel.
@@ -52,28 +72,19 @@ void listenChannel (int fd, GSourceFunc func)
 /*-------------------------------------
  * callback method for socket accept.
 -------------------------------------*/
-gboolean socket_connecting (GIOChannel *channel) 
+gboolean socket_connecting (ApplicationState *state) 
 {
 	/* A client is asking a new connection */
-	struct sockaddr_in client; 
-	socklen_t len = sizeof (client); 
-	memset (&client, 0, sizeof (client)); 
+	int newfd = -1;
 
-	int fd = -1, newfd = -1;
-
-	fprintf (stderr,"socket_connecting... \n"); 
+	syslog (LOG_INFO, "socket_connecting... \n"); 
 
 	/* Handle new connections */
-	fd = g_io_channel_unix_get_fd (channel); //返回GIOChannel的文件描述符
-	newfd = accept (fd, (struct sockaddr*)&client, &len);
-	zlmcu_newfd = newfd;
+  newfd = state->zls->clientConnected();
 	if (newfd == -1) {
-		perror ("Server accept error");
+		syslog(LOG_ERR, "Server accept error");
 	} else {
-		fprintf (stderr, "fd = %d, New connection from %s:%d on socket %d\n",
-				fd, inet_ntoa(client.sin_addr), client.sin_port, newfd);
-		modbus_set_socket (modbus_ctx, newfd); //设置modbus的文件描述编号
-		listenChannel (newfd, (GSourceFunc)socket_communite); //添加回调函数 socket_communite()
+		listenChannel (state, newfd, (GSourceFunc)socket_communite); //添加回调函数 socket_communite()
 	}
 
 	return G_SOURCE_CONTINUE;
@@ -83,23 +94,19 @@ gboolean socket_connecting (GIOChannel *channel)
 /*-----------------------------------------
  * callback method for socket accept.
 -----------------------------------------*/
-gboolean socket_communite (GIOChannel *channel) 
+gboolean socket_communite (ApplicationState *state) 
 {
-	fprintf (stderr, "socket_communite func !!!\n");
-	int fd = g_io_channel_unix_get_fd (channel); //返回GIOChannel的文件描述符
-	if (fd == -1) {
-	  perror ("cannot accept client:");
-	}
+	syslog (LOG_INFO, "socket_communite func !!!\n");
 
-	#if 0
+#if DEBUG
 	int flags = fcntl (fd, F_GETFD);
 	if ((flags & O_NONBLOCK) == O_NONBLOCK) {
-	fprintf (stderr, "Yup, it's nonblocking.\n");
+    fprintf (stderr, "Yup, it's nonblocking.\n");
 	} else {
-	fprintf (stderr, "Nope, it's blocking.\n");
+    fprintf (stderr, "Nope, it's blocking.\n");
 	}
-	#endif
-
+#endif
+  /*
 	unsigned char recvMsg[64] = {0};
 
 	int rc = recv (fd, recvMsg, 64, 0);
@@ -109,7 +116,8 @@ gboolean socket_communite (GIOChannel *channel)
 		   fprintf (stderr, "[%02hhX]", recvMsg[i]);
 	  }
 	  fprintf (stderr, "\n");
-	} else {
+	}
+  else {
 		fprintf (stderr, "recv failed !!\n");
 		GSource *current_source;
 		current_source = g_main_current_source ();
@@ -117,14 +125,14 @@ gboolean socket_communite (GIOChannel *channel)
 		g_source_destroy (current_source);
 
 		return G_SOURCE_REMOVE;
-	}
+    }*/
 
 	return G_SOURCE_CONTINUE;
 }
 
 static gboolean
 application_iterate(ZLServer *server) {
-  server->retrieve();
+  server->readAll();
   /* The timer will continue to call this function every second as long as it
    * returns TRUE.
    */

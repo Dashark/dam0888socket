@@ -1,29 +1,28 @@
 #include "ZLServer.h"
 
-#include <assert>
+#include <cassert>
+#include <syslog.h>
+#include <unistd.h>
+#include <cstring>
+#include <arpa/inet.h>
 
-ZLServer::IOModel::IOModel(int id, int ins, int outs):slaveID_(id), inputs_(ins), outputs_(outs) {
+#define NB_CONNECTION  5 //listen()函数等待连接队列的最大长度
+
+ZLServer::IOModel::IOModel(const std::string &ip, int id, int ins, int outs): slaveID_(id), inputs_(ins), outputs_(outs) {
 
   assert(slaveID_ > 0);
-
+  ip_ = ip;
 }
 
-IOModel::~IOModel() {
+ZLServer::IOModel::~IOModel() {
 
-}
-
-bool ZLServer::IOModel::identify(int id) {
-  if(id_ == id)
-    return true;
-
-  return false;
 }
 
 bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
-  char buf[inputs_.size()];
-  if(!modbusRead(buf, inputs_.size()))
+  uint8_t *buf = new uint8_t[inputs_.size()];
+  if(!modbusRead(ctx, buf, inputs_.size()))
     return false;
   int i = 0;
   bool ret = false;
@@ -34,10 +33,11 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
     }
     i += 1;
   }
+  delete[] buf;
   return ret;
 }
 
-bool ZLServer::IOModel::modbusRead(char buf[], int size) {
+bool ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   int ret = 0;
   ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
   if(ret == -1) {
@@ -50,24 +50,31 @@ bool ZLServer::IOModel::modbusRead(char buf[], int size) {
 }
 
 void ZLServer::IOModel::write(modbus_t *ctx) {
-  int i = 0;
+  /*int i = 0;
   for(auto& bit : outputs_) {
     bit = buf[i];
     i += 1;
   }
+  */
 }
 
-bool ZLServer::IOModel::modbusWrite(char buf[], int size) {
+bool ZLServer::IOModel::modbusWrite(modbus_t *ctx, char buf[], int size) {
   return false;
 }
 
+bool ZLServer::IOModel::setFileDesc(int fd) {
+  fd_ = fd;
+  return true;
+}
+
+///////////////////////////ZLServer Implement//////////////////////////////////////////////////////
 ZLServer::ZLServer(int port):port_(port) {
   assert(port_ > 1024);
 	modbus_ctx_ = modbus_new_rtu ("/dev/ttyUSB0", 9600, 'N', 8, 1); //波特率9600,比特位8，校验位1，无等价位
 
 #ifdef DEBUG
 	/* set debug flag of the context */
-	if (modbus_set_debug (modbus_ctx, 1) == -1) {
+	if (modbus_set_debug (modbus_ctx_, 1) == -1) {
 		fprintf (stderr, "set debug failed: %s\n", modbus_strerror (errno));
 		modbus_free (modbus_ctx_);
 	}
@@ -76,7 +83,7 @@ ZLServer::ZLServer(int port):port_(port) {
     /* set default slave number in the context */
   if(modbus_ctx_ != NULL) {
     /* set timeout for response */
-    if (modbus_set_response_timeout (modbus_ctx, 0, 35000) == -1) {
+    if (modbus_set_response_timeout (modbus_ctx_, 0, 35000) == -1) {
 		  syslog (LOG_CRIT, "set timeout failed: %s\n", modbus_strerror (errno));
       modbus_free (modbus_ctx_);
       modbus_ctx_ = NULL;
@@ -84,7 +91,7 @@ ZLServer::ZLServer(int port):port_(port) {
   }
 }
 
-int ZLServer::listen() {
+int ZLServer::listenZL() {
 	struct sockaddr_in server_zlmcu = {0};
 	/*--- zlmcu的socket连接设置 ---*/
 	socket_fd_ = socket (AF_INET, SOCK_STREAM, 0);
@@ -114,24 +121,81 @@ int ZLServer::listen() {
   return socket_fd_;
 }
 
-int clientConnected(int fd) {
-  if(socket_fd_ != fd)
+int ZLServer::clientConnected() {
+  if(socket_fd_ == -1)
     return -1;  //wrong server
   struct sockaddr_in *client = new struct sockaddr_in;
+  socklen_t len = sizeof(struct sockaddr_in);
 	int newfd = accept (socket_fd_, (struct sockaddr*)&client, &len);
 	if (newfd == -1) {
     syslog (LOG_ERR, "Server accept error (fd = %d)", socket_fd_);
 	} else {
+    char *ip = inet_ntoa(client->sin_addr);
 		syslog (LOG_INFO, "fd = %d, New connection from %s:%d on socket %d\n",
-				socket_fd_, inet_ntoa(client->sin_addr), client->sin_port, newfd);
+				socket_fd_, ip, client->sin_port, newfd);
+    IOModel *iom = findIOModel(ip);
+    iom->setFileDesc(newfd);
   }
-    return newfd;
+  return newfd;
 }
 
 bool ZLServer::readAll() {
   for(IOModel* mod : models_) {
     bool ret = mod->read(modbus_ctx_);
     if(ret)
-      notify(mod.ip, mod.id, mod.addr);
+      //notify(mod->ip, mod.id, mod.addr);
+      return ret;
   }
+  return false;
+}
+
+void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
+  IOModel *iom = new ZLServer::IOModel(ip, id, ins, outs);
+  models_.push_back(iom);
+}
+
+ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip) {
+  for(IOModel *io : models_) {
+    if(io->equal(ip))
+      return io;
+  }
+  return nullptr;
+}
+////////////////////////////////////////////////////////////////
+ZLDefine::ZLDefine() {
+  keyFile = g_key_file_new();
+}
+
+ZLDefine::~ZLDefine() {
+  g_key_file_free(keyFile);
+}
+
+ZLServer* ZLDefine::createServer() {
+  GError *error = nullptr;
+  if(!g_key_file_load_from_file(keyFile, "zlmcu.ini", G_KEY_FILE_NONE, &error)) {
+    syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!! (%s)", error->message);
+    return nullptr;
+  }
+
+  int port = g_key_file_get_integer(keyFile, "Connection", "port", &error);
+  if(error != nullptr) {
+    syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
+    return nullptr;
+  }
+  ZLServer *server = new ZLServer(port);
+  addIOModels(server);
+  return server;
+}
+
+void ZLDefine::addIOModels(ZLServer *server) {
+  assert(keyFile != nullptr);
+  GError *error = nullptr;
+  int ins = g_key_file_get_integer(keyFile, "IOModel", "inputs", &error);
+  int outs = g_key_file_get_integer(keyFile, "IOModel", "outputs", &error);
+  int mods = g_key_file_get_integer(keyFile, "IOModel", "models", &error);
+  gchar *ip = g_key_file_get_string(keyFile, "IOModel", "ip", &error);
+  for(int i = 0; i < mods; i++) {
+    server->createIOModel(ip, i, ins, outs);
+  }
+  g_free(ip);
 }

@@ -1,13 +1,13 @@
 #include "Connection.h"
 
-#include <assert>
+#include <cassert>
 
 Connection::Connection() {
 
 }
 
 void Connection::attach(Device *device) {
-  assert(device != NULL);
+  assert(device != nullptr);
   devices_.push_back(device);
 }
 
@@ -16,7 +16,7 @@ void Connection::detach(Device *device) {
 }
 
 void Connection::notify() {
-  for(auto dev : devices_) {
+  for(Device *dev : devices_) {
     dev->update();
   }
 }

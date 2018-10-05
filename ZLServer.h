@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string>
+#include <glib.h>
 
 class ZLServer : public Connection {
  private:
@@ -18,16 +19,23 @@ class IOModel {
   int fd_;
 
  public:
-  IOModel(const char ip[], int id, int ins, int outs);
+  IOModel(const std::string &ip, int id, int ins, int outs);
   ~IOModel();
-  bool equal(const char ip[]) const;
-  bool equal(int fd) const;
-  bool equal(int id);
+  bool equal(const std::string &ip) const {
+    return ip_ == ip ? true : false;
+  }
+  /*bool equal(int fd) const {
+    return fd_ == fd ? true : false;
+    }*/
+  bool equal(int id) const {
+    return slaveID_ == id ? true : false;
+  }
   bool read(modbus_t *ctx);
   void write(modbus_t *ctx);
+  bool setFileDesc(int fd);
  private:
-  bool modbusRead(char buf[], int size);
-  bool modbusWrite(char buf[], int size);
+  bool modbusRead(modbus_t *ctx, uint8_t buf[], int size);
+  bool modbusWrite(modbus_t *ctx, char buf[], int size);
 };
 
   const int port_;
@@ -38,11 +46,23 @@ class IOModel {
  public:
   ZLServer(int port);
   ~ZLServer();
-  int listen();
-  int clientConnected(int fd);
+  int listenZL();
+  int clientConnected();
   bool readAll();
+  void createIOModel(const std::string &ip, int id, int ins, int outs);
+ private:
+  IOModel* findIOModel(const std::string &ip);
 };
 
-
+class ZLDefine {
+ private:
+  GKeyFile *keyFile;
+ public:
+  ZLDefine();
+  ~ZLDefine();
+  ZLServer* createServer();
+ private:
+  void addIOModels(ZLServer *server);
+};
 
 #endif
