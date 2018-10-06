@@ -133,8 +133,7 @@ int ZLServer::clientConnected() {
     char *ip = inet_ntoa(client->sin_addr);
 		syslog (LOG_INFO, "fd = %d, New connection from %s:%d on socket %d\n",
 				socket_fd_, ip, client->sin_port, newfd);
-    IOModel *iom = findIOModel(ip);
-    iom->setFileDesc(newfd);
+    setIOModel(ip, newfd);
   }
   return newfd;
 }
@@ -161,23 +160,32 @@ ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip) {
   }
   return nullptr;
 }
+
+void ZLServer::setIOModel(const std::string &ip, int fd) {
+  for(IOModel *iom : models_) {
+    if(iom->equal(ip)) {
+      iom->setFileDesc(fd);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////
 ZLDefine::ZLDefine() {
-  keyFile = g_key_file_new();
+  keyFile_ = g_key_file_new();
 }
 
 ZLDefine::~ZLDefine() {
-  g_key_file_free(keyFile);
+  g_key_file_free(keyFile_);
 }
 
 ZLServer* ZLDefine::createServer() {
   GError *error = nullptr;
-  if(!g_key_file_load_from_file(keyFile, "zlmcu.ini", G_KEY_FILE_NONE, &error)) {
+  if(!g_key_file_load_from_file(keyFile_, "zlmcu.ini", G_KEY_FILE_NONE, &error)) {
     syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!! (%s)", error->message);
     return nullptr;
   }
 
-  int port = g_key_file_get_integer(keyFile, "Connection", "port", &error);
+  int port = g_key_file_get_integer(keyFile_, "Connection", "port", &error);
   if(error != nullptr) {
     syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
     return nullptr;
@@ -188,14 +196,14 @@ ZLServer* ZLDefine::createServer() {
 }
 
 void ZLDefine::addIOModels(ZLServer *server) {
-  assert(keyFile != nullptr);
+  assert(keyFile_ != nullptr);
   GError *error = nullptr;
-  int ins = g_key_file_get_integer(keyFile, "IOModel", "inputs", &error);
-  int outs = g_key_file_get_integer(keyFile, "IOModel", "outputs", &error);
-  int mods = g_key_file_get_integer(keyFile, "IOModel", "models", &error);
-  gchar *ip = g_key_file_get_string(keyFile, "IOModel", "ip", &error);
+  int ins = g_key_file_get_integer(keyFile_, "IOModel", "inputs", &error);
+  int outs = g_key_file_get_integer(keyFile_, "IOModel", "outputs", &error);
+  int mods = g_key_file_get_integer(keyFile_, "IOModel", "models", &error);
+  gchar *ip = g_key_file_get_string(keyFile_, "IOModel", "ip", &error);
   for(int i = 0; i < mods; i++) {
-    server->createIOModel(ip, i, ins, outs);
+    server->createIOModel(ip, i+1, ins, outs);
   }
   g_free(ip);
 }

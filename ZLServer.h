@@ -52,11 +52,12 @@ class IOModel {
   void createIOModel(const std::string &ip, int id, int ins, int outs);
  private:
   IOModel* findIOModel(const std::string &ip);
+  void setIOModel(const std::string &ip, int fd);
 };
 
 class ZLDefine {
  private:
-  GKeyFile *keyFile;
+  GKeyFile *keyFile_;
  public:
   ZLDefine();
   ~ZLDefine();
