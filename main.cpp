@@ -32,6 +32,7 @@ static void close_sigint (int dummy)
 
 int main() {
 	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
+  openlog("dam0888Socket", LOG_PID|LOG_CONS|LOG_PERROR, LOG_USER);
   ApplicationState state;
   state.ctx = g_main_context_new();
 
@@ -40,9 +41,13 @@ int main() {
   int fd = state.zls->listenZL();
   listenChannel(&state, fd, (GSourceFunc)socket_connecting);
   g_timeout_add(ITERATION_PERIOD,
-                                  (GSourceFunc)application_iterate, state.zls);
+                (GSourceFunc)application_iterate, state.zls);
+	loop = g_main_loop_new (state.ctx, FALSE); //Creates a new GMainLoop structure.
+	g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
+
 	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
 	g_main_context_unref (state.ctx); //Decreases the reference count on a GMainContext object by one.
+  delete state.zls;
   return 0;
 }
 
