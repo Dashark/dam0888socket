@@ -91,6 +91,10 @@ ZLServer::ZLServer(int port):port_(port) {
   }
 }
 
+ZLServer::~ZLServer() {
+
+}
+
 int ZLServer::listenZL() {
 	struct sockaddr_in server_zlmcu = {0};
 	/*--- zlmcu的socket连接设置 ---*/
