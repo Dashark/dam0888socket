@@ -11,13 +11,13 @@ class Device {
   const std::string id_;
  public:
   Device(const char ip[], const char id[]);
-  Device* equalIP(const std::string &ip) const {
-    return ip_ == ip ? true :false;
+  Device* equalIP(const std::string &ip) {
+    return ip_ == ip ? this : nullptr;
   }
-  Device* equalID(const std::string &id) const {
-    return id_ == id ? true : false;
+  Device* equalID(const std::string &id) {
+    return id_ == id ? this : nullptr;
   }
-  void update(int sid, int addr, const std::vector<char> &stats);
+  void update(int sid, const std::vector<char> &stats);
 };
 
 class DeviceFactory {
