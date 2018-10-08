@@ -15,8 +15,10 @@ void Connection::detach(Device *device) {
 
 }
 
-void Connection::notify() {
+void Connection::notify(const std::string &ip, int id,
+                        const std::vector<char> &buf) {
   for(Device *dev : devices_) {
-    dev->update();
+    if(dev->equalIP(ip))
+      dev->update(id, buf);
   }
 }

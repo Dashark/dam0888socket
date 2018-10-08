@@ -2,7 +2,7 @@
 #define _CONNECTION_H_
 
 #include <vector>
-
+#include <string>
 #include "Device.h"
 
 class Connection {
@@ -12,7 +12,8 @@ class Connection {
   Connection();
   void attach(Device *device);
   void detach(Device *device);
-  void notify();
+  void notify(const std::string &ip, int id,
+              const std::vector<char> &buf);
 };
 
 #endif
