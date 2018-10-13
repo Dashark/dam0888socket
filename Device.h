@@ -4,11 +4,13 @@
 #include <string>
 #include <vector>
 #include <glib.h>
+#include "Operation.h"
 
 class Device {
  private:
   const std::string ip_;
   const std::string id_;
+  std::vector<Operation*> opers_;
  public:
   Device(const char ip[], const char id[]);
   Device* equalIP(const std::string &ip) {
