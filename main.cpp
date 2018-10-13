@@ -3,6 +3,9 @@
 
 #include <glib.h>
 #include <syslog.h>
+#include "Broker.h"
+#include "Device.h"
+
 typedef struct _ApplicationState ApplicationState;
 struct _ApplicationState {
   GMainContext *ctx;
@@ -34,6 +37,9 @@ int main() {
 	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
   openlog("dam0888Socket", LOG_PID|LOG_CONS|LOG_PERROR, LOG_USER);
   ApplicationState state;
+  KafkaDefine kdef;
+  DeviceFactory dfa;
+  dfa.createDevices();
   state.ctx = g_main_context_new();
 
   ZLDefine zld;
