@@ -46,6 +46,8 @@
 *.su
 *.x86_64
 .tmp_versions/
+/Broker.cpp~
+/Broker.h~
 /dam0888Socket
 Mkfile.old
 Module.symvers
