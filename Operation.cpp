@@ -22,7 +22,7 @@ OperationDefine::~OperationDefine() {
 std::vector<Operation*> OperationDefine::create(const std::string &file) {
   GError *error = NULL;
   std::vector<Operation*> ops;
-  if(!g_key_file_load_from_file(keyFile_, "devices.ini", G_KEY_FILE_NONE, &error)) {
+  if(!g_key_file_load_from_file(keyFile_, file.c_str(), G_KEY_FILE_NONE, &error)) {
     syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
     return ops; //TODO sth will do
   }

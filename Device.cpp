@@ -10,6 +10,12 @@ void Device::update(int sid, const std::vector<char> &stats) {
 
 }
 
+void Device::clearOpers() {
+  for(Operation* oper : opers_)
+    delete oper;
+  opers_.clear();
+}
+
 ///////////////////////////////////////////////////////////////////////
 DeviceFactory::DeviceFactory() {
   keyFile_ = g_key_file_new();

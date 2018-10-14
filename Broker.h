@@ -4,6 +4,7 @@
 #include <librdkafka/rdkafkacpp.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <glib.h>
 
 class Broker {
@@ -20,7 +21,7 @@ class KafkaDefine {
   RdKafka::Conf *conf_;
   RdKafka::Producer *producer_;
   std::vector<RdKafka::Topic*> topics_;
-  std::vector<Broker*> brokers_;
+  std::map<Broker*, std::string> brokers_;
   GKeyFile *keyFile_;
  public:
   KafkaDefine();
