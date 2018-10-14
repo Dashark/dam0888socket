@@ -2,14 +2,17 @@
 #define _OPERATION_H_
 
 #include <string>
+#include <vector>
 #include <glib.h>
 
 class Operation {
  private:
   const int ioport_;
   const int ioaddr_;
+  const std::string name_;
+  char state_;
  public:
-  Operation(int port, int addr);
+  Operation(const char name[], int port, int addr);
   bool equalPort(int port) const {
     return ioport_ == port ? true : false;
   }
@@ -23,7 +26,9 @@ class OperationDefine {
  private:
   GKeyFile *keyFile_;
  public:
-  Operation* create();
+  OperationDefine();
+  ~OperationDefine();
+  std::vector<Operation*> create(const std::string &file);
 };
 
 #endif
