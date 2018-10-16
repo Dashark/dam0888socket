@@ -11,7 +11,7 @@ class Broker {
  private:
   RdKafka::Topic *topic_;
  public:
-  Broker();
+  Broker(RdKafka::Topic *topic);
   ~Broker();
   void write(const std::string &data);
 };
@@ -27,6 +27,11 @@ class KafkaDefine {
   KafkaDefine();
   ~KafkaDefine();
   bool load();
+ private:
+  void kafkaConf();
+  void kafkaProducer();
+  RdKafka::Topic* kafkaTopic(const char name[]);
+  void createBroker(const char devs[], RdKafka::Topic *topic);
 };
 
 

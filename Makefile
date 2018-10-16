@@ -4,10 +4,10 @@ PROG    = dam0888Socket
 SRC			= $(wildcard *.cpp)
 OBJS		= $(SRC:%.cpp=%.o)
 
-PKGS    = glib-2.0 libmodbus 
+PKGS    = glib-2.0 libmodbus
 CFLAGS += $(shell pkg-config --cflags $(PKGS))
 LDLIBS += $(shell pkg-config --libs $(PKGS))
-LDLIBS += -lrdkafka -lz -lpthread -lm -ldl
+LDLIBS += -lrdkafka++ -lz -lpthread -lm -ldl
 
 
 all: $(OBJS)
