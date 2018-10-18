@@ -10,8 +10,9 @@
 class Broker {
  private:
   RdKafka::Topic *topic_;
+  RdKafka::Producer *producer_;
  public:
-  Broker(RdKafka::Topic *topic);
+  Broker(RdKafka::Producer *producer, RdKafka::Topic *topic);
   ~Broker();
   void write(const std::string &data);
 };
@@ -30,8 +31,8 @@ class KafkaDefine {
  private:
   void kafkaConf();
   void kafkaProducer();
-  RdKafka::Topic* kafkaTopic(const char name[]);
-  void createBroker(const char devs[], RdKafka::Topic *topic);
+  RdKafka::Topic* kafkaTopic(const char group[]);
+  void createBroker(const char group[], RdKafka::Topic *topic);
 };
 
 
