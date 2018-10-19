@@ -19,7 +19,7 @@ class Operation {
   bool equalAddr(int addr) const {
     return ioaddr_ == addr ? true : false;
   }
-  void execute();
+  void execute(char state);
 };
 
 class OperationDefine {

@@ -6,8 +6,11 @@ Operation::Operation(const char name[], int port, int addr):ioport_(port), ioadd
   state_ = 0;
 }
 
-void Operation::execute() {
-
+void Operation::execute(char state) {
+  if(state_ != state) {
+    state_ = state;
+    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////
