@@ -3,20 +3,21 @@
 
 #include <glib.h>
 #include <syslog.h>
+#include <cassert>
 #include "Broker.h"
 #include "Device.h"
 
 typedef struct _ApplicationState ApplicationState;
 struct _ApplicationState {
-  GMainContext *ctx;
+
   ZLServer *zls;
 };
 /* add callback into GLib Main Event Loop. */
-void listenChannel (ApplicationState *state, int fd, GSourceFunc func);
+void listenChannel (ApplicationState *state, int fd, GIOFunc func);
 /* callback method for socket accept. */
-gboolean socket_connecting (ApplicationState *state);
+gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointer *p);
 /* callback method for socket accept. */
-gboolean socket_communite (ApplicationState *state);
+gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state);
 
 /*timeout 调用函数*/
 static gboolean
@@ -36,66 +37,64 @@ static void close_sigint (int dummy)
 int main() {
 	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
   openlog("dam0888Socket", LOG_PID|LOG_CONS|LOG_PERROR, LOG_USER);
-  ApplicationState state;
+  ApplicationState *state = g_slice_new0(ApplicationState);
   //KafkaDefine kdef;
   //DeviceFactory dfa;
   //dfa.createDevices();
-  state.ctx = g_main_context_new();
+
 
   ZLDefine zld;
-  state.zls = zld.createServer();
-  int fd = state.zls->listenZL();
-  listenChannel(&state, fd, (GSourceFunc)socket_connecting);
+  state->zls = zld.createServer();
+
+  int fd = state->zls->listenZL();
+  if(fd == -1) return -1;
+	loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.  
+  assert(loop != NULL);
+  listenChannel(state, fd, (GIOFunc)socket_connecting);
   g_timeout_add(ITERATION_PERIOD,
-                (GSourceFunc)application_iterate, state.zls);
-	loop = g_main_loop_new (state.ctx, FALSE); //Creates a new GMainLoop structure.
+                (GSourceFunc)application_iterate, state->zls);
+
 	g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
 
 	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
-	g_main_context_unref (state.ctx); //Decreases the reference count on a GMainContext object by one.
-  delete state.zls;
+  delete state->zls;
+  g_slice_free(ApplicationState, state);
   return 0;
 }
 
 /*-----------------------------------------
  * add callback into GLib Main Event Loop.
 -----------------------------------------*/
-void listenChannel (ApplicationState *state, int fd, GSourceFunc func) 
+void listenChannel (ApplicationState *state, int fd, GIOFunc func) 
 {
 	GIOChannel *channel;
-	GSource *source;
-	char name[20] = {0};
+	guint source;
 
 	channel = g_io_channel_unix_new (fd); //To create a new GIOChannel on Unix systems
-	source = g_io_create_watch (channel, G_IO_IN); //Creates a GSource that's dispatched when condition is met for the given channel.
-
-	sprintf (name, "source'fd = %d", fd);
-	g_source_set_name (source, name); //Sets a name for the source, test ***
-
-	g_source_set_callback (source, func, state, NULL); //Sets the callback function for a source.
-	g_source_attach (source, state->ctx); //attach source to context (g_ctx)
+	source = g_io_add_watch (channel, G_IO_IN, func, state); //Creates a GSource that's dispatched when condition is met for the given channel.
 
 	/*the loop has an internal reference so we'll drop ours*/
 	g_io_channel_unref (channel); //Decrements the reference count of a GIOChannel.
-	g_source_unref (source); //Decreases the reference count of a source by one.
 }
 
 /*-------------------------------------
  * callback method for socket accept.
 -------------------------------------*/
-gboolean socket_connecting (ApplicationState *state) 
+gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointer *p) 
 {
 	/* A client is asking a new connection */
 	int newfd = -1;
 
 	syslog (LOG_INFO, "socket_connecting... \n"); 
-
+  ApplicationState *state = (ApplicationState*)p;
 	/* Handle new connections */
+
   newfd = state->zls->clientConnected();
 	if (newfd == -1) {
 		syslog(LOG_ERR, "Server accept error");
+    return G_SOURCE_REMOVE;
 	} else {
-		listenChannel (state, newfd, (GSourceFunc)socket_communite); //添加回调函数 socket_communite()
+		listenChannel (state, newfd, (GIOFunc)socket_communite); //添加回调函数 socket_communite()
 	}
 
 	return G_SOURCE_CONTINUE;
@@ -105,7 +104,7 @@ gboolean socket_connecting (ApplicationState *state)
 /*-----------------------------------------
  * callback method for socket accept.
 -----------------------------------------*/
-gboolean socket_communite (ApplicationState *state) 
+gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state) 
 {
 	syslog (LOG_INFO, "socket_communite func !!!\n");
 
@@ -143,6 +142,7 @@ gboolean socket_communite (ApplicationState *state)
 
 static gboolean
 application_iterate(ZLServer *server) {
+
   server->readAll();
   /* The timer will continue to call this function every second as long as it
    * returns TRUE.
