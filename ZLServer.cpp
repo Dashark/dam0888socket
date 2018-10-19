@@ -130,7 +130,7 @@ int ZLServer::clientConnected() {
     return -1;  //wrong server
   struct sockaddr_in *client = new struct sockaddr_in;
   socklen_t len = sizeof(struct sockaddr_in);
-	int newfd = accept (socket_fd_, (struct sockaddr*)&client, &len);
+	int newfd = accept (socket_fd_, (struct sockaddr*)client, &len);
 	if (newfd == -1) {
     syslog (LOG_ERR, "Server accept error (fd = %d)", socket_fd_);
 	} else {
@@ -139,6 +139,7 @@ int ZLServer::clientConnected() {
 				socket_fd_, ip, client->sin_port, newfd);
     setIOModel(ip, newfd);
   }
+  delete client;
   return newfd;
 }
 
