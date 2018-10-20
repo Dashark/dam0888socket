@@ -12,7 +12,7 @@
 class ZLServer : public Connection {
  private:
 class IOModel {
- private:
+ public:
   const int slaveID_;
   std::vector<char> inputs_, outputs_;
   std::string ip_;
@@ -34,7 +34,7 @@ class IOModel {
   void write(modbus_t *ctx);
   bool setFileDesc(int fd);
  private:
-  bool modbusRead(modbus_t *ctx, uint8_t buf[], int size);
+  int modbusRead(modbus_t *ctx, uint8_t buf[], int size);
   bool modbusWrite(modbus_t *ctx, char buf[], int size);
 };
 

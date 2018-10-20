@@ -12,6 +12,7 @@ ZLServer::IOModel::IOModel(const std::string &ip, int id, int ins, int outs): sl
 
   assert(slaveID_ > 0);
   ip_ = ip;
+  fd_ = -1;
 }
 
 ZLServer::IOModel::~IOModel() {
@@ -22,8 +23,10 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
   uint8_t *buf = new uint8_t[inputs_.size()];
-  if(!modbusRead(ctx, buf, inputs_.size()))
+  if(modbusRead(ctx, buf, inputs_.size()) <= 0) {
     return false;
+  }
+
   int i = 0;
   bool ret = false;
   for(auto& bit : inputs_) {
@@ -37,16 +40,25 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
   return ret;
 }
 
-bool ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
+int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   int ret = 0;
   ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
   if(ret == -1) {
     syslog(LOG_ERR, "modbus_set_socket failed! (%s)", strerror(errno));
-    return false;
+    return ret;
   }
+
   ret = modbus_set_slave(ctx, slaveID_);
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
+    return ret;
+  }
   ret = modbus_read_input_bits(ctx, 0, size, buf);
-  return true;
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
+    return ret;
+  }
+  return ret;
 }
 
 void ZLServer::IOModel::write(modbus_t *ctx) {
@@ -75,7 +87,7 @@ ZLServer::ZLServer(int port):port_(port) {
 #ifdef DEBUG
 	/* set debug flag of the context */
 	if (modbus_set_debug (modbus_ctx_, 1) == -1) {
-		fprintf (stderr, "set debug failed: %s\n", modbus_strerror (errno));
+		syslog (LOG_DEBUG, "set debug failed: %s\n", modbus_strerror (errno));
 		modbus_free (modbus_ctx_);
 	}
 #endif
@@ -83,7 +95,7 @@ ZLServer::ZLServer(int port):port_(port) {
     /* set default slave number in the context */
   if(modbus_ctx_ != NULL) {
     /* set timeout for response */
-    if (modbus_set_response_timeout (modbus_ctx_, 0, 35000) == -1) {
+    if (modbus_set_response_timeout (modbus_ctx_, 0, 150000) == -1) {
 		  syslog (LOG_CRIT, "set timeout failed: %s\n", modbus_strerror (errno));
       modbus_free (modbus_ctx_);
       modbus_ctx_ = NULL;
@@ -144,16 +156,17 @@ int ZLServer::clientConnected() {
 }
 
 bool ZLServer::readAll() {
+  bool ret = false;
   for(IOModel* mod : models_) {
-    bool ret = mod->read(modbus_ctx_);
+    ret = mod->read(modbus_ctx_);
     if(ret)
-      //notify(mod->ip, mod.id, mod.addr);
-      return ret;
+      notify(mod->ip_, mod->slaveID_, mod->inputs_);
   }
-  return false;
+  return ret;
 }
 
 void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
+  assert(id > 0);
   IOModel *iom = new ZLServer::IOModel(ip, id, ins, outs);
   models_.push_back(iom);
 }
@@ -172,6 +185,7 @@ void ZLServer::setIOModel(const std::string &ip, int fd) {
       iom->setFileDesc(fd);
     }
   }
+  //modbus_set_socket(modbus_ctx_, fd);
 }
 
 ////////////////////////////////////////////////////////////////
