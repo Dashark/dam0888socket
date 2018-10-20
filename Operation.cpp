@@ -30,7 +30,7 @@ std::vector<Operation*> OperationDefine::create(const std::string &file) {
     return ops; //TODO sth will do
   }
   gchar **groups = g_key_file_get_groups(keyFile_, NULL);
-  while(groups != NULL) {
+  while(*groups != NULL) {
     int port = g_key_file_get_integer(keyFile_, *groups, "ioport", &error);
     int addr = g_key_file_get_integer(keyFile_, *groups, "ioaddr", &error);
     Operation *op = new Operation(*groups, port, addr);
