@@ -42,6 +42,7 @@ class IOModel {
   int socket_fd_;
   sockaddr_in sockaddr_;
   std::vector<IOModel*> models_;
+  std::vector<IOModel*>::iterator moditer_;
   modbus_t *modbus_ctx_;
  public:
   ZLServer(int port);

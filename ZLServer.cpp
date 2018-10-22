@@ -156,12 +156,13 @@ int ZLServer::clientConnected() {
 }
 
 bool ZLServer::readAll() {
+  moditer_ = moditer_ == models_.end() ? models_.begin() : moditer_;
   bool ret = false;
-  for(IOModel* mod : models_) {
-    ret = mod->read(modbus_ctx_);
-    if(ret)
-      notify(mod->ip_, mod->slaveID_, mod->inputs_);
-  }
+  IOModel* mod = (*moditer_);
+  ret = mod->read(modbus_ctx_);
+  if(ret)
+    notify(mod->ip_, mod->slaveID_, mod->inputs_);
+  ++moditer_;  //point to next model
   return ret;
 }
 
@@ -169,6 +170,7 @@ void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
   assert(id > 0);
   IOModel *iom = new ZLServer::IOModel(ip, id, ins, outs);
   models_.push_back(iom);
+  moditer_ = models_.begin();
 }
 
 ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip) {
