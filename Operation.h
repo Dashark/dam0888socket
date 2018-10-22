@@ -20,6 +20,7 @@ class Operation {
     return ioaddr_ == addr ? true : false;
   }
   void execute(char state);
+  std::string stateStr() const;
 };
 
 class OperationDefine {

@@ -13,6 +13,11 @@ void Operation::execute(char state) {
   }
 }
 
+std::string Operation::stateStr() const {
+  std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
+  syslog(LOG_INFO, "Operation String : %s", all.c_str());
+  return all;
+}
 //////////////////////////////////////////////////////////////////////////
 OperationDefine::OperationDefine() {
   keyFile_ = g_key_file_new();

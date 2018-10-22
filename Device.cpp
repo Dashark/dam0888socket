@@ -19,6 +19,24 @@ void Device::update(int sid, const std::vector<char> &stats) {
   }
 }
 
+std::string Device::stateStr() const {
+  std::string all = "{\"kafkaType\":\"x\",\"data\":{\"deviceid\":\"" + id_ + "\"";
+  for(Operation* oper : opers_) {
+    all += ",";
+    all += oper->stateStr();
+  }
+  gchar *time_str = NULL;
+  //GTimeVal time_val;
+  GDateTime *time = NULL;
+  time = g_date_time_new_now_local();
+  time_str = g_date_time_format(time, "%Y/%m/%d %H:%M:%S");
+  all += ",\"timestamp\":\"" + std::string(time_str) + "\"}}";
+  g_free(time_str);
+  g_date_time_unref(time);
+  syslog(LOG_INFO, "Device String : %s", all.c_str());
+  return all;
+}
+
 void Device::clearOpers() {
   for(Operation* oper : opers_)
     delete oper;

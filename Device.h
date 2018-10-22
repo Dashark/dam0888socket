@@ -28,6 +28,7 @@ class Device {
   }
   //////////////////////////////////////////////////////
   void update(int sid, const std::vector<char> &stats);
+  std::string stateStr() const;
  private:
   void clearOpers();
 };
