@@ -5,7 +5,7 @@
 #include <syslog.h>
 #include <cassert>
 #include <iostream>
-
+#include "Messager.hpp"
 #include "Device.h"
 
 typedef struct _ApplicationState ApplicationState;
@@ -37,6 +37,11 @@ static void close_sigint (int dummy)
 
 int main(int argc, char *argv[]) {
   if(argc == 1) {
+    Messager mes;
+    mes.setID("shark");
+    mes.setAStep("Unknown");
+    mes.setTime("1999/08/03");
+    mes.dump();
     std::cout << "damSocket timeout" << std::endl;
     return -1;
   }
