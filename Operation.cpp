@@ -4,6 +4,7 @@
 
 Operation::Operation(const char name[], int port, int addr):ioport_(port), ioaddr_(addr), name_(name) {
   state_ = 0;
+  stateStr_ = false;
 }
 
 Operation::~Operation() {
@@ -11,26 +12,42 @@ Operation::~Operation() {
 }
 
 int Operation::execute(char state) {
-  int ret = 0;
-  if(state_ == 0 && state == 1) {
-    state_ = state;
-    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
-    ret = 1;
-  }
-  else if(state_ == 1 && state == 0) {
-    state_ = state;
-    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
-    ret = -1;
-  }
-  return ret;
+  upSingal(state);
+  downSingal(state);
+  return 0;
 }
 
 std::string Operation::stateStr() {
   std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
+  if(!stateStr_)
+    all = "";
+  else 
+    stateStr_ = false;
   syslog(LOG_INFO, "Operation String : %s", all.c_str());
   return all;
 }
 
+bool Operation::upSingal(char state) {
+  bool ret = false;
+  if(state_ == 0 && state == 1) {
+    state_ = state;
+    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
+    ret = true;
+    stateStr_ = true;
+  }
+  return ret;
+}
+
+bool Operation::downSingal(char state) {
+  bool ret = false;
+  if(state_ == 1 && state == 0) {
+    state_ = state;
+    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
+    ret = true;
+    stateStr_ = true;
+  }
+  return ret;
+}
 //////////////////////////////////////////////////////////////////////////
 UpOperation::UpOperation(const char name[], int port, int addr):Operation(name, port, addr) {
   stateStr_ = false;
@@ -41,18 +58,8 @@ UpOperation::~UpOperation() {
 }
 
 int UpOperation::execute(char state) {
-  int ret = Operation::execute(state);
-  if(ret == 1)
-    stateStr_ = true;
-  return ret;
-}
-
-std::string UpOperation::stateStr() {
-  if(stateStr_) {
-    stateStr_ = false;
-    return Operation::stateStr();
-  }
-  return "";
+  upSingal(state);
+  return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
