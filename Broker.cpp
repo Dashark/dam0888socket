@@ -49,7 +49,6 @@ bool KafkaDefine::load() {
   GError *error = nullptr;
   if(!g_key_file_load_from_file(keyFile_, "kafka.ini", G_KEY_FILE_NONE, &error)) {
     syslog(LOG_WARNING, "failed to load kafka.ini. There's no Kafka model! (%s)", error->message);
-    g_free(error);
     return false; //there's no kafka model.
   }
 
@@ -77,7 +76,6 @@ void KafkaDefine::kafkaConf() {
   gchar* host = g_key_file_get_string(keyFile_, "Broker", "host", &error);
   if(error != nullptr) {
     syslog(LOG_ERR, "failed to load Kafka broker. Please check the configure!!!");
-    g_free(error);
     return;// nullptr;
   }
   conf_ = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
@@ -106,7 +104,6 @@ RdKafka::Topic* KafkaDefine::kafkaTopic(const char group[]) {
   gchar* tstr = g_key_file_get_string(keyFile_, group, "topic", &error);
   if(error != nullptr) {
     syslog(LOG_ERR, "failed to load Kafka topic in group %s. Please check the configure!!! (%s)", group, error->message);
-    g_free(error);
     return nullptr;
   }
   /*
@@ -129,7 +126,6 @@ void KafkaDefine::createBroker(const char group[], RdKafka::Topic *topic) {
   gchar* devs = g_key_file_get_string(keyFile_, group, "devices", &error);
   if(error != nullptr) {
     syslog(LOG_ERR, "failed to load Kafka devices in group %s. Please check the configure!!! (%s)", group, error->message);
-    g_free(error);
     return;// nullptr;
   }
   Broker *bk = new Broker(producer_, topic);

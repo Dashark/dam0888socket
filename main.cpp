@@ -4,7 +4,8 @@
 #include <glib.h>
 #include <syslog.h>
 #include <cassert>
-#include "Broker.h"
+#include <iostream>
+
 #include "Device.h"
 
 typedef struct _ApplicationState ApplicationState;
@@ -35,13 +36,16 @@ static void close_sigint (int dummy)
 }
 
 int main(int argc, char *argv[]) {
+  if(argc == 1) {
+    std::cout << "damSocket timeout" << std::endl;
+    return -1;
+  }
 	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
   openlog("dam0888Socket", LOG_PID|LOG_CONS|LOG_PERROR, LOG_USER);
   ApplicationState *state = new ApplicationState;
-  //KafkaDefine kdef;
+
   DeviceFactory dfa;
   std::vector<Device*> devs = dfa.createDevices();
-
 
   ZLDefine zld;
   state->zls = zld.createServer();
@@ -143,7 +147,7 @@ gboolean socket_communite (GIOChannel *channel, GIOCondition condition, Applicat
 
 static gboolean
 application_iterate(ZLServer *server) {
-
+  assert(server != nullptr);
   server->readAll();
   /* The timer will continue to call this function every second as long as it
    * returns TRUE.

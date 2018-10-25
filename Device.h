@@ -15,6 +15,7 @@ class Device {
   std::vector<Broker*> brokers_;
  public:
   Device(const char ip[], const char id[]);
+  ~Device();
   ////////////////////////////////////////////
   Device* equalIP(const std::string &ip) {
     return ip_ == ip ? this : nullptr;
@@ -26,9 +27,13 @@ class Device {
     clearOpers();
     opers_ = opers;
   }
+  void attach(Broker *brok) {
+    if(brok != nullptr)
+      brokers_.push_back(brok);
+  }
   //////////////////////////////////////////////////////
   void update(int sid, const std::vector<char> &stats);
-  std::string stateStr() const;
+  std::string stateStr();
  private:
   void clearOpers();
 };
@@ -36,6 +41,7 @@ class Device {
 class DeviceFactory {
  private:
   GKeyFile *keyFile_;
+  KafkaDefine *kafDef_;
  public:
   DeviceFactory();
   ~DeviceFactory();

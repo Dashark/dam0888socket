@@ -41,6 +41,7 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
 }
 
 int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
+  assert(ctx != nullptr && fd_ != -1);
   int ret = 0;
   ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
   if(ret == -1) {
@@ -134,6 +135,7 @@ int ZLServer::listenZL() {
     socket_fd_ = -1;
 		return socket_fd_;
 	}
+  moditer_ = models_.end();
   return socket_fd_;
 }
 
@@ -159,10 +161,12 @@ bool ZLServer::readAll() {
   moditer_ = moditer_ == models_.end() ? models_.begin() : moditer_;
   bool ret = false;
   IOModel* mod = (*moditer_);
-  ret = mod->read(modbus_ctx_);
-  if(ret)
-    notify(mod->ip_, mod->slaveID_, mod->inputs_);
-  ++moditer_;  //point to next model
+  if(mod != nullptr) {
+    ret = mod->read(modbus_ctx_);
+    if(ret)
+      notify(mod->ip_, mod->slaveID_, mod->inputs_);
+    ++moditer_;  //point to next model
+  }
   return ret;
 }
 

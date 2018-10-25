@@ -28,6 +28,13 @@ class KafkaDefine {
   KafkaDefine();
   ~KafkaDefine();
   bool load();
+  Broker* getBroker(const char id[]) {
+    for(auto& kv : brokers_) {
+      if(kv.second.find(id) != std::string::npos)
+        return kv.first;
+    }
+    return nullptr;
+  }
  private:
   void kafkaConf();
   void kafkaProducer();

@@ -6,18 +6,55 @@ Operation::Operation(const char name[], int port, int addr):ioport_(port), ioadd
   state_ = 0;
 }
 
-void Operation::execute(char state) {
-  if(state_ != state) {
-    state_ = state;
-    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
-  }
+Operation::~Operation() {
+
 }
 
-std::string Operation::stateStr() const {
+int Operation::execute(char state) {
+  int ret = 0;
+  if(state_ == 0 && state == 1) {
+    state_ = state;
+    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
+    ret = 1;
+  }
+  else if(state_ == 1 && state == 0) {
+    state_ = state;
+    syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
+    ret = -1;
+  }
+  return ret;
+}
+
+std::string Operation::stateStr() {
   std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
   syslog(LOG_INFO, "Operation String : %s", all.c_str());
   return all;
 }
+
+//////////////////////////////////////////////////////////////////////////
+UpOperation::UpOperation(const char name[], int port, int addr):Operation(name, port, addr) {
+  stateStr_ = false;
+}
+
+UpOperation::~UpOperation() {
+
+}
+
+int UpOperation::execute(char state) {
+  int ret = Operation::execute(state);
+  if(ret == 1)
+    stateStr_ = true;
+  return ret;
+}
+
+std::string UpOperation::stateStr() {
+  if(stateStr_) {
+    stateStr_ = false;
+    return Operation::stateStr();
+  }
+  return "";
+}
+
 //////////////////////////////////////////////////////////////////////////
 OperationDefine::OperationDefine() {
   keyFile_ = g_key_file_new();
@@ -27,10 +64,15 @@ OperationDefine::~OperationDefine() {
   g_key_file_free(keyFile_);
 }
 
-std::vector<Operation*> OperationDefine::create(const std::string &file) {
+std::vector<Operation*> OperationDefine::create(const std::string &group, const std::string &type) {
+  std::string opfile("op_");
+  opfile += group;
+  opfile += ".ini";
+  syslog(LOG_INFO, "Current Operation Conf : %s", opfile.c_str());
+
   GError *error = NULL;
   std::vector<Operation*> ops;
-  if(!g_key_file_load_from_file(keyFile_, file.c_str(), G_KEY_FILE_NONE, &error)) {
+  if(!g_key_file_load_from_file(keyFile_, opfile.c_str(), G_KEY_FILE_NONE, &error)) {
     syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
     return ops; //TODO sth will do
   }
@@ -38,9 +80,18 @@ std::vector<Operation*> OperationDefine::create(const std::string &file) {
   while(*groups != NULL) {
     int port = g_key_file_get_integer(keyFile_, *groups, "ioport", &error);
     int addr = g_key_file_get_integer(keyFile_, *groups, "ioaddr", &error);
-    Operation *op = new Operation(*groups, port, addr);
+    Operation *op = createOperation(type.c_str(), *groups, port, addr);
     ops.push_back(op);
     groups += 1;
   }
   return ops;
+}
+
+Operation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr) {
+  std::string ts(type);
+
+  if(ts == "agv") {
+    return new UpOperation(name, port, addr);
+  }
+  return new Operation(name, port, addr);
 }

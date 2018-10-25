@@ -1,9 +1,13 @@
 #include "Device.h"
 
 #include <syslog.h>
-
+#include <cassert>
 Device::Device(const char ip[], const char id[]):ip_(ip), id_(id) {
 
+}
+
+Device::~Device() {
+  clearOpers();
 }
 
 void Device::update(int sid, const std::vector<char> &stats) {
@@ -17,20 +21,31 @@ void Device::update(int sid, const std::vector<char> &stats) {
     }
     idx += 1;
   }
+  for(Broker *bk : brokers_) {
+    if(bk != nullptr) {
+      std::string st = stateStr();
+      if(!st.empty())
+        bk->write(st);
+    }
+  }
 }
 
-std::string Device::stateStr() const {
-  std::string all = "{\"kafkaType\":\"x\",\"data\":{\"deviceid\":\"" + id_ + "\"";
+std::string Device::stateStr() {
+  std::string all = "{\"kafkaType\":\"x\",\"data\":{\"mpos\":\"" + id_ + "\"";
   for(Operation* oper : opers_) {
     all += ",";
-    all += oper->stateStr();
+    assert(oper != nullptr);
+    std::string st = oper->stateStr();
+    if(st.empty())
+      return "";
+    all += st;
   }
   gchar *time_str = NULL;
   //GTimeVal time_val;
   GDateTime *time = NULL;
   time = g_date_time_new_now_local();
   time_str = g_date_time_format(time, "%Y/%m/%d %H:%M:%S");
-  all += ",\"timestamp\":\"" + std::string(time_str) + "\"}}";
+  all += ",\"time\":\"" + std::string(time_str) + "\"}}";
   g_free(time_str);
   g_date_time_unref(time);
   syslog(LOG_INFO, "Device String : %s", all.c_str());
@@ -46,14 +61,17 @@ void Device::clearOpers() {
 ///////////////////////////////////////////////////////////////////////
 DeviceFactory::DeviceFactory() {
   keyFile_ = g_key_file_new();
+  kafDef_ = new KafkaDefine();
 }
 
 DeviceFactory::~DeviceFactory() {
   g_key_file_free(keyFile_);
+  delete kafDef_;
 }
 
 std::vector<Device*> DeviceFactory::createDevices() {
   GError *error = NULL;
+  kafDef_->load();
   std::vector<Device*> devs;
   if(!g_key_file_load_from_file(keyFile_, "devices.ini", G_KEY_FILE_NONE, &error)) {
     syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
@@ -64,13 +82,13 @@ std::vector<Device*> DeviceFactory::createDevices() {
   while(*groups != NULL) {
     gchar* id = g_key_file_get_string(keyFile_, *groups, "id", &error);
     gchar* ip = g_key_file_get_string(keyFile_, *groups, "ip", &error);
+    gchar* type = g_key_file_get_string(keyFile_, *groups, "type", &error);
     Device *dev = new Device(ip, id);
+    Broker *bro = kafDef_->getBroker(id);
+    dev->attach(bro);
     devs.push_back(dev);
-    //TODO create operators of device.
-    char opfile[64];
-    g_snprintf(opfile, 64, "op_%s.ini", (*groups));
-    syslog(LOG_INFO, "Current Operation Conf : %s", opfile);
-    std::vector<Operation*> ops = opdef.create(opfile);
+
+    std::vector<Operation*> ops = opdef.create((*groups), type);
     dev->setOpers(ops);
     groups += 1;
   }
