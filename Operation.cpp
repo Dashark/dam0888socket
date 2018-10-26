@@ -4,26 +4,22 @@
 
 Operation::Operation(const char name[], int port, int addr):ioport_(port), ioaddr_(addr), name_(name) {
   state_ = 0;
-  stateStr_ = false;
+
 }
 
 Operation::~Operation() {
 
 }
 
-int Operation::execute(char state) {
-  upSingal(state);
-  downSingal(state);
-  return 0;
+bool Operation::execute(char state) {
+  bool ret = false;
+  ret |= upSingal(state);
+  ret |= downSingal(state);
+  return ret;
 }
 
 std::string Operation::stateStr() {
   std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
-  if(!stateStr_)
-    all = "";
-  else 
-    stateStr_ = false;
-  syslog(LOG_INFO, "Operation String : %s", all.c_str());
   return all;
 }
 
@@ -33,7 +29,6 @@ bool Operation::upSingal(char state) {
     state_ = state;
     syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
     ret = true;
-    stateStr_ = true;
   }
   return ret;
 }
@@ -44,22 +39,20 @@ bool Operation::downSingal(char state) {
     state_ = state;
     syslog(LOG_INFO, "Operation %s : %d", name_.c_str(), state_);
     ret = true;
-    stateStr_ = true;
   }
   return ret;
 }
 //////////////////////////////////////////////////////////////////////////
 UpOperation::UpOperation(const char name[], int port, int addr):Operation(name, port, addr) {
-  stateStr_ = false;
+
 }
 
 UpOperation::~UpOperation() {
 
 }
 
-int UpOperation::execute(char state) {
-  upSingal(state);
-  return 0;
+bool UpOperation::execute(char state) {
+  return upSingal(state);
 }
 
 //////////////////////////////////////////////////////////////////////////

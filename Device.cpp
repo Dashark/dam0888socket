@@ -12,20 +12,23 @@ Device::~Device() {
 
 void Device::update(int sid, const std::vector<char> &stats) {
   int idx = 0;
+  bool newst = false;
   for(char s : stats) {
     for(Operation *oper : opers_) {
       if(oper->equalPort(sid) && oper->equalAddr(idx)) {
-        oper->execute(s);
+        newst |= oper->execute(s);
         break; //TODO one state for one operation
       }
     }
     idx += 1;
   }
-  for(Broker *bk : brokers_) {
-    if(bk != nullptr) {
-      std::string st = stateStr();
-      if(!st.empty())
-        bk->write(st);
+  if(newst) {
+    for(Broker *bk : brokers_) {
+      if(bk != nullptr) {
+        std::string st = stateStr();
+        if(!st.empty())
+          bk->write(st);
+      }
     }
   }
 }
@@ -35,11 +38,9 @@ std::string Device::stateStr() {
   for(Operation* oper : opers_) {
     all += ",";
     assert(oper != nullptr);
-    std::string st = oper->stateStr();
-    if(st.empty())
-      return "";
-    all += st;
+    all += oper->stateStr();
   }
+
   gchar *time_str = NULL;
   //GTimeVal time_val;
   GDateTime *time = NULL;

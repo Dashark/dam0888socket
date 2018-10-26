@@ -11,7 +11,6 @@ class Operation {
   const int ioaddr_;
   const std::string name_;
   char state_;
-  bool stateStr_;
  public:
   Operation(const char name[], int port, int addr);
   virtual ~Operation();
@@ -21,7 +20,7 @@ class Operation {
   bool equalAddr(int addr) const {
     return ioaddr_ == addr ? true : false;
   }
-  virtual int execute(char state);
+  virtual bool execute(char state);
   virtual std::string stateStr();
  protected:
   bool upSingal(char state);
@@ -30,11 +29,11 @@ class Operation {
 
 class UpOperation : public Operation {
  private:
-  bool stateStr_;
+
  public:
   UpOperation(const char name[], int port, int addr);
   virtual ~UpOperation();
-  virtual int execute(char state);
+  virtual bool execute(char state);
 
 };
 
