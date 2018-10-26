@@ -57,6 +57,7 @@ UpOperation::~UpOperation() {
 }
 
 bool UpOperation::execute(char state) {
+  downSingal(state);
   return upSingal(state);
 }
 
