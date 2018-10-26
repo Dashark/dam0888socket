@@ -5,6 +5,8 @@
 #include <vector>
 #include <glib.h>
 
+#include "Messager.hpp"
+
 class Operation {
  private:
   const int ioport_;
@@ -22,6 +24,7 @@ class Operation {
   }
   virtual bool execute(char state);
   virtual std::string stateStr();
+  virtual std::string stateStr(Messager *mes);
  protected:
   bool upSingal(char state);
   bool downSingal(char state);

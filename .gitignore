@@ -48,9 +48,11 @@
 .tmp_versions/
 /Broker.cpp~
 /Broker.h~
+/Messager.cpp~
 /dam0888Socket
 /kafka.ini~
 Mkfile.old
 Module.symvers
 dkms.conf
 modules.order
+*~

@@ -37,11 +37,13 @@ static void close_sigint (int dummy)
 
 int main(int argc, char *argv[]) {
   if(argc == 1) {
-    Messager mes;
-    mes.setID("shark");
-    mes.setAStep("Unknown");
-    mes.setTime("1999/08/03");
-    mes.dump();
+    Messager *mes = new AGVButtonMessager();
+    mes->setID("shark");
+    mes->setAStep("Unknown");
+    mes->setTime("1999/08/03");
+    mes->setKV("PowerOn", "ON");
+    mes->dump();
+    delete mes;
     std::cout << "damSocket timeout" << std::endl;
     return -1;
   }

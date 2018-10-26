@@ -130,6 +130,19 @@ void KafkaDefine::createBroker(const char group[], RdKafka::Topic *topic) {
   }
   Broker *bk = new Broker(producer_, topic);
   brokers_.insert(std::pair<Broker*, std::string>(bk, devs));
+  Messager *mes = createMessager(group);
+  if(mes != nullptr)
+    messagers_.insert(std::pair<Messager*, std::string>(mes, devs));
   g_free(devs);
 }
 
+Messager* KafkaDefine::createMessager(const char group[]) {
+  GError *error = nullptr;
+  gchar* json = g_key_file_get_string(keyFile_, group, "json", &error);
+  if(error != nullptr) {
+    syslog(LOG_ERR, "failed to load Kafka devices in group %s. Please check the configure!!! (%s)", group, error->message);
+    return nullptr;
+  }
+  Messager *mes = MessagerDefine::create(json);
+  return mes;
+}

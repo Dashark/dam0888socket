@@ -23,6 +23,11 @@ std::string Operation::stateStr() {
   return all;
 }
 
+std::string Operation::stateStr(Messager *mes) {
+  mes->setKV(name_, (state_ == 0 ? "OFF" : "ON"));
+  return "";
+}
+
 bool Operation::upSingal(char state) {
   bool ret = false;
   if(state_ == 0 && state == 1) {

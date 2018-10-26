@@ -23,11 +23,14 @@ void Device::update(int sid, const std::vector<char> &stats) {
     idx += 1;
   }
   if(newst) {
-    for(Broker *bk : brokers_) {
-      if(bk != nullptr) {
-        std::string st = stateStr();
-        if(!st.empty())
-          bk->write(st);
+    for(Messager *mes : messagers_) {
+      if(mes != nullptr) {
+        stateStr(mes);
+        for(Broker *bk : brokers_) {
+          if(bk != nullptr) {
+            mes->send(bk);
+          }
+        }
       }
     }
   }
@@ -51,6 +54,25 @@ std::string Device::stateStr() {
   g_date_time_unref(time);
   syslog(LOG_INFO, "Device String : %s", all.c_str());
   return all;
+}
+
+std::string Device::stateStr(Messager *mes) {
+  mes->setID(id_);
+  for(Operation* oper : opers_) {
+    assert(oper != nullptr);
+    oper->stateStr(mes);
+  }
+
+  gchar *time_str = NULL;
+  GDateTime *time = NULL;
+  time = g_date_time_new_now_local();
+  time_str = g_date_time_format(time, "%Y/%m/%d %H:%M:%S");
+  mes->setTime(time_str);
+  g_free(time_str);
+  g_date_time_unref(time);
+
+  mes->dump();
+  return "";
 }
 
 void Device::clearOpers() {
@@ -87,6 +109,8 @@ std::vector<Device*> DeviceFactory::createDevices() {
     Device *dev = new Device(ip, id);
     Broker *bro = kafDef_->getBroker(id);
     dev->attach(bro);
+    Messager *mes = kafDef_->getMessager(id);
+    dev->attach(mes);
     devs.push_back(dev);
 
     std::vector<Operation*> ops = opdef.create((*groups), type);

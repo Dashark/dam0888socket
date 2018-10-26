@@ -6,6 +6,7 @@
 #include <glib.h>
 #include "Operation.h"
 #include "Broker.h"
+#include "Messager.hpp"
 
 class Device {
  private:
@@ -13,6 +14,7 @@ class Device {
   const std::string id_;
   std::vector<Operation*> opers_;
   std::vector<Broker*> brokers_;
+  std::vector<Messager*> messagers_;
  public:
   Device(const char ip[], const char id[]);
   ~Device();
@@ -31,9 +33,14 @@ class Device {
     if(brok != nullptr)
       brokers_.push_back(brok);
   }
+  void attach(Messager *mes) {
+    if(mes != nullptr)
+      messagers_.push_back(mes);
+  }
   //////////////////////////////////////////////////////
   void update(int sid, const std::vector<char> &stats);
   std::string stateStr();
+  std::string stateStr(Messager *mes);
  private:
   void clearOpers();
 };
