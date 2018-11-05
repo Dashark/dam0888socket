@@ -1,0 +1,79 @@
+{
+    "name": "PressRubber",
+    "id": "00301",
+    "devices": [
+        {
+            "name": "A06",
+            "id": "03",
+            "ip": "192.168.32.1",
+            "type": "machine",
+            "operations": [
+                {
+                    "name": "poweron",
+                    "io": "readonly",
+                    "ioport": 1,
+                    "ioaddr": 0
+                },
+                {
+                    "name": "standby",
+                    "io": "readonly",
+                    "ioport": 1,
+                    "ioaddr": 1
+                },
+                {
+                    "name": "lockup",
+                    "io": "readwrite",
+                    "ioport": 2,
+                    "ioaddr": 0
+                }
+            ]
+        },
+        {
+            "name": "A07",
+            "id": "031",
+            "ip": "192.168.32.1",
+            "type": "machine"
+        },
+        {
+            "name": "Robot",
+            "type": "robot",
+            "id": 234,
+            "ip": "192.168.1.32",
+            "operations": [
+                {
+                    "name": "chucking",
+                    "io": "readwrite",
+                    "ioport": 0,
+                    "ioaddr": 196647,
+                    "length": 2,
+                    "values": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ]
+                },
+                {
+                    "name": "job",
+                    "io": "readwrite",
+                    "ioport": 0,
+                    "ioaddr": 196647,
+                    "length": 2,
+                    "values": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ]
+                }
+
+            ]
+        }
+    ]
+}
