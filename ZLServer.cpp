@@ -200,13 +200,11 @@ void ZLServer::setIOModel(const std::string &ip, int fd) {
 
 ////////////////////////////////////////////////////////////////
 ZLDefine::ZLDefine() {
- // keyFile_ = g_key_file_new();
   std::ifstream i("test.json");
     i >> js_;
 }
 
 ZLDefine::~ZLDefine() {
- // g_key_file_free(keyFile_);
 }
 
 int jsonToInt(json j)
@@ -221,20 +219,11 @@ int jsonToInt(json j)
 }
 
 ZLServer* ZLDefine::createServer() {
-  //GError *error = nullptr;
- // if(!g_key_file_load_from_file(keyFile_, "zlmcu.ini", G_KEY_FILE_NONE, &error)) {
-  //  syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!! (%s)", error->message);
-  //  return nullptr;
-  //}
-  
   if(js_["zlmcu"]==""){
    syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!!");
     return nullptr;
    }
   int port=jsonToInt(js_["port"]); 
-
-  //int port = g_key_file_get_integer(keyFile_, "Connection", "port", &error);
-  //if(error != nullptr) {
    if(js_["port"]==""){
     syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
     return nullptr;
@@ -245,21 +234,12 @@ ZLServer* ZLDefine::createServer() {
 }
 
 void ZLDefine::addIOModels(ZLServer *server) {
- // assert(keyFile_ != nullptr);
- // GError *error = nullptr;
   int ins=jsonToInt(js_["zlmcu"]["inputs"]);
   int outs=jsonToInt(js_["zlmcu"]["outputs"]);
   int mods=jsonToInt(js_["zlmcu"]["models"]);
-  // int ins = g_key_file_get_integer(keyFile_, "IOModel", "inputs", &error);
-   //int outs = g_key_file_get_integer(keyFile_, "IOModel", "outputs", &error);
-   //int mods = g_key_file_get_integer(keyFile_, "IOModel", "models", &error);
    std::string sip=js_["zlmcu"]["ip"];
-   //char ip[20];
-   //trcpy(ip,);
- // gchar *ip = g_key_file_get_string(keyFile_, "IOModel", "ip", &error);
   for(int i = 0; i < mods; i++) {
     server->createIOModel(sip.c_str(), i+1, ins, outs);
   }
-  //g_free(ip);
 }
 
