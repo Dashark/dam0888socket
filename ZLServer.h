@@ -60,7 +60,6 @@ class IOModel {
 
 class ZLDefine {
  private:
-  GKeyFile *keyFile_;
   json js_;
  public:
   ZLDefine();
