@@ -6,7 +6,8 @@
 #include <glib.h>
 
 #include "Messager.hpp"
-
+#include "json.hpp"
+using json = nlohmann::json;
 class Operation {
  private:
   const int ioport_;
@@ -46,7 +47,7 @@ class OperationDefine {
  public:
   OperationDefine();
   ~OperationDefine();
-  std::vector<Operation*> create(const std::string &group, const std::string &type);
+  std::vector<Operation*> create(json operate, const std::string &type);
  private:
   Operation* createOperation(const char type[], const char name[], int port, int addr);
 
