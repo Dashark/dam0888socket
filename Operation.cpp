@@ -1,7 +1,10 @@
 #include "Operation.h"
-
+#include <string>
 #include <syslog.h>
-
+#include <sstream>
+#include "json.hpp"
+#include <iostream>
+using json = nlohmann::json;
 Operation::Operation(const char name[], int port, int addr):ioport_(port), ioaddr_(addr), name_(name) {
   state_ = 0;
 
@@ -70,26 +73,56 @@ OperationDefine::~OperationDefine() {
   g_key_file_free(keyFile_);
 }
 
-std::vector<Operation*> OperationDefine::create(const std::string &group, const std::string &type) {
-  std::string opfile("op_");
-  opfile += group;
-  opfile += ".ini";
-  syslog(LOG_INFO, "Current Operation Conf : %s", opfile.c_str());
+int jsonToInt2(json j)
+{
+  std::string str=j;
+  std::stringstream stream;
+  int outs;
+  stream << str;
+  stream >> outs;
+  stream.clear();
+  return outs;
+}
 
-  GError *error = NULL;
-  std::vector<Operation*> ops;
-  if(!g_key_file_load_from_file(keyFile_, opfile.c_str(), G_KEY_FILE_NONE, &error)) {
-    syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
-    return ops; //TODO sth will do
+std::vector<Operation*> OperationDefine::create(json operate, const std::string &type) {
+ // std::string opfile("op_");
+  //opfile += group;
+ // opfile += ".ini";
+
+  //syslog(LOG_INFO, "Current Operation Conf : %s", opfile.c_str());
+  //syslog(LOG_INFO,"group",group);
+  //syslog(LOG_INFO,"type",type);
+  std::vector<Operation*> ops; 
+  if(operate=="")
+  {
+    syslog(LOG_CRIT, "Device operation missing!");
   }
-  gchar **groups = g_key_file_get_groups(keyFile_, NULL);
-  while(*groups != NULL) {
-    int port = g_key_file_get_integer(keyFile_, *groups, "ioport", &error);
-    int addr = g_key_file_get_integer(keyFile_, *groups, "ioaddr", &error);
-    Operation *op = createOperation(type.c_str(), *groups, port, addr);
-    ops.push_back(op);
-    groups += 1;
+ else
+  {
+       syslog(LOG_CRIT, "Device operation has loaded!");
+	for (auto& element : operate){ 
+	    std::string str_name=element["name"];
+	    char* name=(char*)str_name.data();
+	    int port=jsonToInt2(element["ioport"]);
+	    int addr=jsonToInt2(element["ioaddr"]);
+	    Operation *op = createOperation(type.c_str(), name, port, addr);
+	   ops.push_back(op);
+	 }
   }
+  
+ // if(js_["devices"]==""){
+  //if(!g_key_file_load_from_file(keyFile_, opfile.c_str(), G_KEY_FILE_NONE, &error)) {
+  //  syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
+ //   return ops; //TODO sth will do
+  //}
+ // gchar **groups = g_key_file_get_groups(keyFile_, NULL);
+  //while(*groups != NULL) {
+   // int port = g_key_file_get_integer(keyFile_, *groups, "ioport", &error);
+  //  int addr = g_key_file_get_integer(keyFile_, *groups, "ioaddr", &error);
+   // Operation *op = createOperation(type.c_str(), *groups, port, addr);
+  //  ops.push_back(op);
+  //  groups += 1;
+ // }
   return ops;
 }
 
