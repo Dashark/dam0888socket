@@ -220,7 +220,7 @@ int jsonToInt(json j)
 
 ZLServer* ZLDefine::createServer() {
   if(js_["zlmcu"]==""){
-   syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!!");
+   syslog(LOG_CRIT, "failed to load configuration of zlmcu. Process can't run!!!");
     return nullptr;
    }
   int port=jsonToInt(js_["port"]); 
