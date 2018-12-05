@@ -52,7 +52,7 @@ KafkaDefine::~KafkaDefine() {
 bool KafkaDefine::load() {
  // GError *error = nullptr;
 
-   std::ifstream i("test.json");
+   std::ifstream i("config.json");
     i >> js_;
    json test;
     if(js_["kafka"]=="")
