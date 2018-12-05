@@ -200,7 +200,7 @@ void ZLServer::setIOModel(const std::string &ip, int fd) {
 
 ////////////////////////////////////////////////////////////////
 ZLDefine::ZLDefine() {
-  std::ifstream i("test.json");
+  std::ifstream i("config.json");
     i >> js_;
 }
 
