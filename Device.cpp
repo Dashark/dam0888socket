@@ -99,7 +99,7 @@ DeviceFactory::~DeviceFactory() {
 std::vector<Device*> DeviceFactory::createDevices() {
   kafDef_->load();
   std::vector<Device*> devs;
-   std::ifstream i("test.json");
+   std::ifstream i("config.json");
     json js_;
     i >> js_;
   if(js_["devices"]==""){
