@@ -85,13 +85,6 @@ int jsonToInt2(json j)
 }
 
 std::vector<Operation*> OperationDefine::create(json operate, const std::string &type) {
- // std::string opfile("op_");
-  //opfile += group;
- // opfile += ".ini";
-
-  //syslog(LOG_INFO, "Current Operation Conf : %s", opfile.c_str());
-  //syslog(LOG_INFO,"group",group);
-  //syslog(LOG_INFO,"type",type);
   std::vector<Operation*> ops; 
   if(operate=="")
   {
@@ -110,19 +103,7 @@ std::vector<Operation*> OperationDefine::create(json operate, const std::string 
 	 }
   }
   
- // if(js_["devices"]==""){
-  //if(!g_key_file_load_from_file(keyFile_, opfile.c_str(), G_KEY_FILE_NONE, &error)) {
-  //  syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
- //   return ops; //TODO sth will do
-  //}
- // gchar **groups = g_key_file_get_groups(keyFile_, NULL);
-  //while(*groups != NULL) {
-   // int port = g_key_file_get_integer(keyFile_, *groups, "ioport", &error);
-  //  int addr = g_key_file_get_integer(keyFile_, *groups, "ioaddr", &error);
-   // Operation *op = createOperation(type.c_str(), *groups, port, addr);
-  //  ops.push_back(op);
-  //  groups += 1;
- // }
+
   return ops;
 }
 
