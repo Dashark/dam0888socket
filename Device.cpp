@@ -114,13 +114,11 @@ std::vector<Device*> DeviceFactory::createDevices() {
     for (auto& element : js_["devices"]){ 
       std::string str_id=element["id"];
       char* id=(char*)str_id.data();
-      std::string str="Device has loded !!! id:";
-      str+=str_id;
-      syslog(LOG_CRIT,str.data());
+      syslog(LOG_CRIT,"Device has loded !!! id: %s",id);
       std::string str_ip=element["ip"];
       char* ip=(char*)str_ip.data();
-       std::string str_type=element["type"];
-       char* type=(char*)str_type.data();
+      std::string str_type=element["type"];
+      char* type=(char*)str_type.data();
         
     Device *dev = new Device(ip, id);
     Broker *bro = kafDef_->getBroker(id);
