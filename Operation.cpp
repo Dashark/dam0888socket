@@ -73,19 +73,10 @@ OperationDefine::~OperationDefine() {
   g_key_file_free(keyFile_);
 }
 
-int jsonToInt2(json j)
-{
-  std::string str=j;
-  std::stringstream stream;
-  int outs;
-  stream << str;
-  stream >> outs;
-  stream.clear();
-  return outs;
-}
 
 std::vector<Operation*> OperationDefine::create(json operate, const std::string &type) {
   std::vector<Operation*> ops; 
+   //判断操作本身是否为空,operate可以是字符串,当其为空是空字符串
   if(operate=="")
   {
     syslog(LOG_CRIT, "Device operation missing!");
@@ -96,8 +87,10 @@ std::vector<Operation*> OperationDefine::create(json operate, const std::string 
 	for (auto& element : operate){ 
 	    std::string str_name=element["name"];
 	    char* name=(char*)str_name.data();
-	    int port=jsonToInt2(element["ioport"]);
-	    int addr=jsonToInt2(element["ioaddr"]);
+            std::string str_port=element["ioport"];
+	    int port=std::stoi(str_port);
+            std::string str_addr=element["ioaddr"];
+	    int addr=std::stoi(str_addr);
 	    Operation *op = createOperation(type.c_str(), name, port, addr);
 	   ops.push_back(op);
 	 }
