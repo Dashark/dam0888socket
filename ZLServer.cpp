@@ -207,23 +207,14 @@ ZLDefine::ZLDefine() {
 ZLDefine::~ZLDefine() {
 }
 
-int jsonToInt(json j)
-{
-  std::string str=j;
-  std::stringstream stream;
-  int outs;
-  stream << str;
-  stream >> outs;
-  stream.clear();
-  return outs;
-}
 
 ZLServer* ZLDefine::createServer() {
   if(js_["zlmcu"]==""){
    syslog(LOG_CRIT, "failed to load configuration of zlmcu. Process can't run!!!");
     return nullptr;
    }
-  int port=jsonToInt(js_["port"]); 
+  std::string str_port=js_["port"];
+  int port=std::stoi(str_port); 
    if(js_["port"]==""){
     syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
     return nullptr;
@@ -234,9 +225,12 @@ ZLServer* ZLDefine::createServer() {
 }
 
 void ZLDefine::addIOModels(ZLServer *server) {
-  int ins=jsonToInt(js_["zlmcu"]["inputs"]);
-  int outs=jsonToInt(js_["zlmcu"]["outputs"]);
-  int mods=jsonToInt(js_["zlmcu"]["models"]);
+  std::string str_ins=js_["zlmcu"]["inputs"];
+  int ins=std::stoi((std::string)str_ins);
+  std::string str_outs=js_["zlmcu"]["outputs"];
+  int outs=std::stoi(str_outs);
+  std::string str_mods=js_["zlmcu"]["models"];
+  int mods=std::stoi(str_mods);
    std::string sip=js_["zlmcu"]["ip"];
   for(int i = 0; i < mods; i++) {
     server->createIOModel(sip.c_str(), i+1, ins, outs);
