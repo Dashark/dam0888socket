@@ -47,7 +47,7 @@ class OperationDefine {
  public:
   OperationDefine();
   ~OperationDefine();
-  std::vector<Operation*> create(json operate, const std::string &type);
+  std::vector<Operation*> create(const json operate, const std::string &type);
  private:
   Operation* createOperation(const char type[], const char name[], int port, int addr);
 
