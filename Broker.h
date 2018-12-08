@@ -50,9 +50,9 @@ class KafkaDefine {
  private:
   void kafkaConf();
   void kafkaProducer();
-  RdKafka::Topic* kafkaTopic(json js_topic);
-  void createBroker(json js_topic, RdKafka::Topic *topic);
-  Messager* createMessager(json js_topic);
+  RdKafka::Topic* kafkaTopic(const json &js_topic);
+  void createBroker(const json &js_topic, RdKafka::Topic *topic);
+  Messager* createMessager(const json &js_topic);
 };
 
 
