@@ -86,7 +86,7 @@ std::vector<Operation*> OperationDefine::create(json operate, const std::string 
        syslog(LOG_CRIT, "Device operation has loaded!");
 	for (auto& element : operate){ 
 	    std::string str_name=element["name"];
-	    char* name=(char*)str_name.data();
+	    char* name=(char*)str_name.c_str();
             std::string str_port=element["ioport"];
 	    int port=std::stoi(str_port);
             std::string str_addr=element["ioaddr"];
