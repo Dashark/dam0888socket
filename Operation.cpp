@@ -74,7 +74,7 @@ OperationDefine::~OperationDefine() {
 }
 
 
-std::vector<Operation*> OperationDefine::create(json operate, const std::string &type) {
+std::vector<Operation*> OperationDefine::create(const json operate, const std::string &type) {
   std::vector<Operation*> ops; 
    //判断操作本身是否为空,operate可以是字符串,当其为空是空字符串
   if(operate=="")
