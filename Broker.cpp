@@ -83,7 +83,7 @@ void KafkaDefine::kafkaConf() {
     return;// nullptr;
   }
   std::string str_host=js_["kafka"]["host"];
-  char* host=(char*)str_host.data();
+  char* host=(char*)str_host.c_str();
    syslog(LOG_ERR, "loaded Kafka host: %s",host);
   conf_ = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
   conf_->set("bootstrap.servers", host, errstr); //not sure it's correct
@@ -109,12 +109,12 @@ RdKafka::Topic* KafkaDefine::kafkaTopic(json js_topic) {
   std::string errstr;
 
   if(js_topic["topic"] =="") {
-    syslog(LOG_ERR, "failed to load Kafka topic %s.", js_topic.dump().data());
+    syslog(LOG_ERR, "failed to load Kafka topic %s.", js_topic.dump().c_str());
     return nullptr;
   }
  
   std::string str_tstr=js_topic["topic"];
-   char* tstr=(char*)str_tstr.data();
+   char* tstr=(char*)str_tstr.c_str();
   
   /*
    * Create topic handle.
@@ -133,11 +133,11 @@ RdKafka::Topic* KafkaDefine::kafkaTopic(json js_topic) {
 void KafkaDefine::createBroker(json js_topic,RdKafka::Topic *topic) {
 
   if(js_topic["devices"]==""){
-   syslog(LOG_ERR, "failed to load Kafka devices,topic: %s.", js_topic["name"].dump().data());
+   syslog(LOG_ERR, "failed to load Kafka devices,topic: %s.", js_topic["name"].dump().c_str());
     return;// nullptr;
   }
   std::string str_devs=js_topic["devices"];
-  char* devs=(char*)str_devs.data();
+  char* devs=(char*)str_devs.c_str();
   syslog(LOG_ERR, "loaded Kafka devices ids: %s.",devs);
   Broker *bk = new Broker(producer_, topic);
   brokers_.insert(std::pair<Broker*, std::string>(bk, devs));
@@ -156,7 +156,7 @@ Messager* KafkaDefine::createMessager(json js_topic) {
   }
 
   std::string str_json=js_topic["json"];
-  char* json=(char*)str_json.data();
+  char* json=(char*)str_json.c_str();
   syslog(LOG_ERR, "loaded Kafka json: %s",json);
   
   Messager *mes = MessagerDefine::create(json);
