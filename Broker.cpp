@@ -104,7 +104,7 @@ void KafkaDefine::kafkaProducer() {
 
 }
 
-RdKafka::Topic* KafkaDefine::kafkaTopic(json js_topic) {
+RdKafka::Topic* KafkaDefine::kafkaTopic(const json &js_topic) {
   assert(producer_ != nullptr);
   std::string errstr;
 
@@ -130,7 +130,7 @@ RdKafka::Topic* KafkaDefine::kafkaTopic(json js_topic) {
   return topic;
 }
 
-void KafkaDefine::createBroker(json js_topic,RdKafka::Topic *topic) {
+void KafkaDefine::createBroker(const json &js_topic,RdKafka::Topic *topic) {
 
   if(js_topic["devices"]==""){
    syslog(LOG_ERR, "failed to load Kafka devices,topic: %s.", js_topic["name"].dump().c_str());
@@ -147,7 +147,7 @@ void KafkaDefine::createBroker(json js_topic,RdKafka::Topic *topic) {
  
 }
 
-Messager* KafkaDefine::createMessager(json js_topic) {
+Messager* KafkaDefine::createMessager(const json &js_topic) {
   
   if(js_topic["json"]== "") {
  
