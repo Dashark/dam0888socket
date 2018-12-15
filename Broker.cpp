@@ -155,8 +155,9 @@ Messager* KafkaDefine::createMessager(const json &js_topic) {
     return nullptr;
   }
 
-  std::string str_json=js_topic["json"];
-  char* json=(char*)str_json.c_str();
+ std::string str_json=js_topic["json"];
+ char* json=(char*)str_json.c_str();
+  //char* json=(char*)(js_topic["json"].get<std::string>());
   syslog(LOG_ERR, "loaded Kafka json: %s",json);
   
   Messager *mes = MessagerDefine::create(json);
