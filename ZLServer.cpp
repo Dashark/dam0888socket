@@ -9,6 +9,7 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include "json.hpp"
+#include "ElectricMeter.h"
 using json = nlohmann::json;
 #define NB_CONNECTION  5 //listen()函数等待连接队列的最大长度
 
@@ -26,6 +27,11 @@ ZLServer::IOModel::~IOModel() {
 bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
+    //这里是电表数据的接入点
+    int newfd=fd_;
+    ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
+    em->creatElectricMeter();
+
   uint8_t *buf = new uint8_t[inputs_.size()];
   if(modbusRead(ctx, buf, inputs_.size()) <= 0) {
     return false;
@@ -54,6 +60,7 @@ int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   }
 
   ret = modbus_set_slave(ctx, slaveID_);
+  //printf("%d\n", slaveID_);
   if(ret == -1) {
     syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
     return ret;
@@ -128,14 +135,14 @@ int ZLServer::listenZL() {
 
 	if (bind (socket_fd_, (struct sockaddr*)&server_zlmcu, sizeof(server_zlmcu)) != 0) {
 		syslog (LOG_CRIT, "cannot bind socket:");
-		close (socket_fd_); 
+		close (socket_fd_);
     socket_fd_ = -1;
 		return socket_fd_;
 	}
 
 	if (listen (socket_fd_, NB_CONNECTION) != 0) {
 		syslog (LOG_CRIT, "cannot listen on socket!\n");
-		close (socket_fd_); 
+		close (socket_fd_);
     socket_fd_ = -1;
 		return socket_fd_;
 	}
@@ -170,7 +177,11 @@ bool ZLServer::readAll() {
     if(ret)
       notify(mod->ip_, mod->slaveID_, mod->inputs_);
     ++moditer_;  //point to next model
+
+    //下面是执行电表的方法
+
   }
+
   return ret;
 }
 
@@ -214,7 +225,7 @@ ZLServer* ZLDefine::createServer() {
     return nullptr;
    }
   std::string str_port=js_["port"];
-  int port=std::stoi(str_port); 
+  int port=std::stoi(str_port);
    if(js_["port"]==""){
     syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
     return nullptr;
@@ -236,4 +247,3 @@ void ZLDefine::addIOModels(ZLServer *server) {
     server->createIOModel(sip.c_str(), i+1, ins, outs);
   }
 }
-
