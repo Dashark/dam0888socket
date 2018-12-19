@@ -1,11 +1,15 @@
-#include "ZLServer.h"
 
+#include "ZLServer.h"
+#include <fstream>
 #include <cassert>
 #include <syslog.h>
 #include <unistd.h>
+#include <string>
 #include <cstring>
+#include <sstream>
 #include <arpa/inet.h>
-
+#include "json.hpp"
+using json = nlohmann::json;
 #define NB_CONNECTION  5 //listen()函数等待连接队列的最大长度
 
 ZLServer::IOModel::IOModel(const std::string &ip, int id, int ins, int outs): slaveID_(id), inputs_(ins), outputs_(outs) {
@@ -196,22 +200,22 @@ void ZLServer::setIOModel(const std::string &ip, int fd) {
 
 ////////////////////////////////////////////////////////////////
 ZLDefine::ZLDefine() {
-  keyFile_ = g_key_file_new();
+  std::ifstream i("config.json");
+    i >> js_;
 }
 
 ZLDefine::~ZLDefine() {
-  g_key_file_free(keyFile_);
 }
 
-ZLServer* ZLDefine::createServer() {
-  GError *error = nullptr;
-  if(!g_key_file_load_from_file(keyFile_, "zlmcu.ini", G_KEY_FILE_NONE, &error)) {
-    syslog(LOG_CRIT, "failed to load zlmcu.ini. Process can't run!!! (%s)", error->message);
-    return nullptr;
-  }
 
-  int port = g_key_file_get_integer(keyFile_, "Connection", "port", &error);
-  if(error != nullptr) {
+ZLServer* ZLDefine::createServer() {
+  if(js_["zlmcu"]==""){
+   syslog(LOG_CRIT, "failed to load configuration of zlmcu. Process can't run!!!");
+    return nullptr;
+   }
+  std::string str_port=js_["port"];
+  int port=std::stoi(str_port); 
+   if(js_["port"]==""){
     syslog(LOG_ERR, "failed to load Server's port. Process can't run!!!");
     return nullptr;
   }
@@ -221,14 +225,15 @@ ZLServer* ZLDefine::createServer() {
 }
 
 void ZLDefine::addIOModels(ZLServer *server) {
-  assert(keyFile_ != nullptr);
-  GError *error = nullptr;
-  int ins = g_key_file_get_integer(keyFile_, "IOModel", "inputs", &error);
-  int outs = g_key_file_get_integer(keyFile_, "IOModel", "outputs", &error);
-  int mods = g_key_file_get_integer(keyFile_, "IOModel", "models", &error);
-  gchar *ip = g_key_file_get_string(keyFile_, "IOModel", "ip", &error);
+  std::string str_ins=js_["zlmcu"]["inputs"];
+  int ins=std::stoi((std::string)str_ins);
+  std::string str_outs=js_["zlmcu"]["outputs"];
+  int outs=std::stoi(str_outs);
+  std::string str_mods=js_["zlmcu"]["models"];
+  int mods=std::stoi(str_mods);
+   std::string sip=js_["zlmcu"]["ip"];
   for(int i = 0; i < mods; i++) {
-    server->createIOModel(ip, i+1, ins, outs);
+    server->createIOModel(sip.c_str(), i+1, ins, outs);
   }
-  g_free(ip);
 }
+

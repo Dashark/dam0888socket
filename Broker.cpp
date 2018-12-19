@@ -2,7 +2,11 @@
 
 #include <syslog.h>
 #include <cassert>
-
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <iostream>
+using json = nlohmann::json;
 Broker::Broker(RdKafka::Producer *producer, RdKafka::Topic *topic) {
   producer_ = producer;
   topic_ = topic;
@@ -32,13 +36,13 @@ void Broker::write(const std::string &data) {
 
 /////////////////////////////////////////////////////////
 KafkaDefine::KafkaDefine() {
-  keyFile_ = g_key_file_new();
+  //keyFile_ = g_key_file_new();
   conf_ = nullptr;
   producer_ = nullptr;
 }
 
 KafkaDefine::~KafkaDefine() {
-  g_key_file_free(keyFile_);
+ // g_key_file_free(keyFile_);
   if(conf_ != nullptr)
     delete conf_;
   if(producer_ != nullptr)
@@ -46,38 +50,41 @@ KafkaDefine::~KafkaDefine() {
 }
 
 bool KafkaDefine::load() {
-  GError *error = nullptr;
-  if(!g_key_file_load_from_file(keyFile_, "kafka.ini", G_KEY_FILE_NONE, &error)) {
-    syslog(LOG_WARNING, "failed to load kafka.ini. There's no Kafka model! (%s)", error->message);
-    return false; //there's no kafka model.
+ // GError *error = nullptr;
+
+   std::ifstream i("config.json");
+    i >> js_;
+   json test;
+    if(js_["kafka"]=="")
+    {
+    syslog(LOG_WARNING, "failed to load kafka.ini. There's no Kafka model! ");
+     return false;
+    }
+   kafkaConf();
+   kafkaProducer();
+   RdKafka::Topic *topic ;
+   for (auto& element : js_["kafka"]["topic"])
+  {
+   
+      topic = kafkaTopic(element);
+      createBroker(element,topic);
+      topics_.push_back(topic);
   }
 
-  kafkaConf();
-  kafkaProducer();
-  int gi = 1;
-  gchar *tbuf = g_strdup_printf("Topic%02d", gi);
-  RdKafka::Topic *topic = kafkaTopic(tbuf);
-  while(topic != nullptr) {
-    createBroker(tbuf, topic);
-    topics_.push_back(topic);
-    g_free(tbuf);
-    gi += 1; //next topic config
-    tbuf = g_strdup_printf("Topic%02d", gi);
-    topic = kafkaTopic(tbuf);
-  }
-  g_free(tbuf);
+ 
+
   return true;
 }
 
 void KafkaDefine::kafkaConf() {
-  assert(keyFile_ != nullptr);
   std::string errstr;
-  GError *error = nullptr;
-  gchar* host = g_key_file_get_string(keyFile_, "Broker", "host", &error);
-  if(error != nullptr) {
+ if(js_["kafka"]["host"]=="") {
     syslog(LOG_ERR, "failed to load Kafka broker. Please check the configure!!!");
     return;// nullptr;
   }
+  std::string str_host=js_["kafka"]["host"];
+  char* host=(char*)str_host.c_str();
+   syslog(LOG_ERR, "loaded Kafka host: %s",host);
   conf_ = RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL);
   conf_->set("bootstrap.servers", host, errstr); //not sure it's correct
 }
@@ -97,15 +104,18 @@ void KafkaDefine::kafkaProducer() {
 
 }
 
-RdKafka::Topic* KafkaDefine::kafkaTopic(const char group[]) {
+RdKafka::Topic* KafkaDefine::kafkaTopic(const json &js_topic) {
   assert(producer_ != nullptr);
   std::string errstr;
-  GError *error = nullptr;
-  gchar* tstr = g_key_file_get_string(keyFile_, group, "topic", &error);
-  if(error != nullptr) {
-    syslog(LOG_ERR, "failed to load Kafka topic in group %s. Please check the configure!!! (%s)", group, error->message);
+
+  if(js_topic["topic"] =="") {
+    syslog(LOG_ERR, "failed to load Kafka topic %s.", js_topic.dump().c_str());
     return nullptr;
   }
+ 
+  std::string str_tstr=js_topic["topic"];
+   char* tstr=(char*)str_tstr.c_str();
+  
   /*
    * Create topic handle.
    */
@@ -116,33 +126,39 @@ RdKafka::Topic* KafkaDefine::kafkaTopic(const char group[]) {
     g_free(tstr);
     return nullptr;
   }
-  g_free(tstr);
+  
   return topic;
 }
 
-void KafkaDefine::createBroker(const char group[], RdKafka::Topic *topic) {
-  assert(topic != nullptr);
-  GError *error = nullptr;
-  gchar* devs = g_key_file_get_string(keyFile_, group, "devices", &error);
-  if(error != nullptr) {
-    syslog(LOG_ERR, "failed to load Kafka devices in group %s. Please check the configure!!! (%s)", group, error->message);
+void KafkaDefine::createBroker(const json &js_topic,RdKafka::Topic *topic) {
+
+  if(js_topic["devices"]==""){
+   syslog(LOG_ERR, "failed to load Kafka devices,topic: %s.", js_topic["name"].dump().c_str());
     return;// nullptr;
   }
+  std::string str_devs=js_topic["devices"];
+  char* devs=(char*)str_devs.c_str();
+  syslog(LOG_ERR, "loaded Kafka devices ids: %s.",devs);
   Broker *bk = new Broker(producer_, topic);
   brokers_.insert(std::pair<Broker*, std::string>(bk, devs));
-  Messager *mes = createMessager(group);
+  Messager *mes = createMessager(js_topic);
   if(mes != nullptr)
     messagers_.insert(std::pair<Messager*, std::string>(mes, devs));
-  g_free(devs);
+ 
 }
 
-Messager* KafkaDefine::createMessager(const char group[]) {
-  GError *error = nullptr;
-  gchar* json = g_key_file_get_string(keyFile_, group, "json", &error);
-  if(error != nullptr) {
-    syslog(LOG_ERR, "failed to load Kafka devices in group %s. Please check the configure!!! (%s)", group, error->message);
+Messager* KafkaDefine::createMessager(const json &js_topic) {
+  
+  if(js_topic["json"]== "") {
+ 
+    syslog(LOG_ERR, "failed to load Kafka json");
     return nullptr;
   }
+
+  std::string str_json=js_topic["json"];
+  char* json=(char*)str_json.c_str();
+  syslog(LOG_ERR, "loaded Kafka json: %s",json);
+  
   Messager *mes = MessagerDefine::create(json);
   return mes;
 }

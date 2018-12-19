@@ -1,7 +1,13 @@
 #include "Device.h"
-
+#include <string>
 #include <syslog.h>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <cassert>
+#include "json.hpp"
+#include <iostream>
+using json = nlohmann::json;
 Device::Device(const char ip[], const char id[]):ip_(ip), id_(id) {
 
 }
@@ -83,39 +89,45 @@ void Device::clearOpers() {
 
 ///////////////////////////////////////////////////////////////////////
 DeviceFactory::DeviceFactory() {
-  keyFile_ = g_key_file_new();
   kafDef_ = new KafkaDefine();
 }
 
 DeviceFactory::~DeviceFactory() {
-  g_key_file_free(keyFile_);
   delete kafDef_;
 }
 
 std::vector<Device*> DeviceFactory::createDevices() {
-  GError *error = NULL;
   kafDef_->load();
   std::vector<Device*> devs;
-  if(!g_key_file_load_from_file(keyFile_, "devices.ini", G_KEY_FILE_NONE, &error)) {
-    syslog(LOG_CRIT, "Device configure failed! (%s)", error->message);
+   std::ifstream i("config.json");
+    json js_;
+    i >> js_;
+  if(js_["devices"]==""){
+    syslog(LOG_CRIT, "Device configure fail!");
     return devs; //TODO sth will do
   }
+  else 
+  {
+    syslog(LOG_CRIT, "Device configure success!");
+  }
   OperationDefine opdef;
-  gchar **groups = g_key_file_get_groups(keyFile_, NULL);
-  while(*groups != NULL) {
-    gchar* id = g_key_file_get_string(keyFile_, *groups, "id", &error);
-    gchar* ip = g_key_file_get_string(keyFile_, *groups, "ip", &error);
-    gchar* type = g_key_file_get_string(keyFile_, *groups, "type", &error);
+    for (auto& element : js_["devices"]){ 
+      std::string str_id=element["id"];
+      char* id=(char*)str_id.c_str();
+      syslog(LOG_CRIT,"Device has loded !!! id: %s",id);
+      std::string str_ip=element["ip"];
+      char* ip=(char*)str_ip.c_str();
+      std::string str_type=element["type"];
+      char* type=(char*)str_type.c_str();
+        
     Device *dev = new Device(ip, id);
     Broker *bro = kafDef_->getBroker(id);
     dev->attach(bro);
     Messager *mes = kafDef_->getMessager(id);
     dev->attach(mes);
     devs.push_back(dev);
-
-    std::vector<Operation*> ops = opdef.create((*groups), type);
+    std::vector<Operation*> ops = opdef.create(element["operate"], type);
     dev->setOpers(ops);
-    groups += 1;
   }
   return devs;
 }

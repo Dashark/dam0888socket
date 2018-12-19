@@ -8,7 +8,8 @@
 #include <glib.h>
 
 #include "Messager.hpp"
-
+#include "json.hpp"
+using json = nlohmann::json;
 class Broker {
  private:
   RdKafka::Topic *topic_;
@@ -27,6 +28,7 @@ class KafkaDefine {
   std::map<Broker*, std::string> brokers_;
   std::map<Messager*, std::string> messagers_;
   GKeyFile *keyFile_;
+  json js_;
  public:
   KafkaDefine();
   ~KafkaDefine();
@@ -48,9 +50,9 @@ class KafkaDefine {
  private:
   void kafkaConf();
   void kafkaProducer();
-  RdKafka::Topic* kafkaTopic(const char group[]);
-  void createBroker(const char group[], RdKafka::Topic *topic);
-  Messager* createMessager(const char group[]);
+  RdKafka::Topic* kafkaTopic(const json &js_topic);
+  void createBroker(const json &js_topic, RdKafka::Topic *topic);
+  Messager* createMessager(const json &js_topic);
 };
 
 

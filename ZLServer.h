@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include <string>
 #include <glib.h>
+#include "json.hpp"
+using json = nlohmann::json;
 
 class ZLServer : public Connection {
  private:
@@ -58,7 +60,7 @@ class IOModel {
 
 class ZLDefine {
  private:
-  GKeyFile *keyFile_;
+  json js_;
  public:
   ZLDefine();
   ~ZLDefine();
