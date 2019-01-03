@@ -12,7 +12,7 @@ class Device {
  private:
   const std::string ip_;
   const std::string id_;
-  std::vector<Operation*> opers_;
+  std::vector<IoOperation*> opers_;
   std::vector<Broker*> brokers_;
   std::vector<Messager*> messagers_;
  public:
@@ -25,7 +25,7 @@ class Device {
   Device* equalID(const std::string &id) {
     return id_ == id ? this : nullptr;
   }
-  void setOpers(std::vector<Operation*> &opers) {
+  void setOpers(std::vector<IoOperation*> &opers) {
     clearOpers();
     opers_ = opers;
   }

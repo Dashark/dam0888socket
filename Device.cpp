@@ -20,7 +20,7 @@ void Device::update(int sid, const std::vector<char> &stats) {
   int idx = 0;
   bool newst = false;
   for(char s : stats) {
-    for(Operation *oper : opers_) {
+    for(IoOperation *oper : opers_) {
       if(oper->equalPort(sid) && oper->equalAddr(idx)) {
         newst |= oper->execute(s);
         break; //TODO one state for one operation
@@ -44,7 +44,7 @@ void Device::update(int sid, const std::vector<char> &stats) {
 
 std::string Device::stateStr() {
   std::string all = "{\"kafkaType\":\"x\",\"data\":{\"mpos\":\"" + id_ + "\"";
-  for(Operation* oper : opers_) {
+  for(IoOperation* oper : opers_) {
     all += ",";
     assert(oper != nullptr);
     all += oper->stateStr();
@@ -64,7 +64,7 @@ std::string Device::stateStr() {
 
 std::string Device::stateStr(Messager *mes) {
   mes->setID(id_);
-  for(Operation* oper : opers_) {
+  for(IoOperation* oper : opers_) {
     assert(oper != nullptr);
     oper->stateStr(mes);
   }
@@ -82,7 +82,7 @@ std::string Device::stateStr(Messager *mes) {
 }
 
 void Device::clearOpers() {
-  for(Operation* oper : opers_)
+  for(IoOperation* oper : opers_)
     delete oper;
   opers_.clear();
 }
@@ -106,12 +106,12 @@ std::vector<Device*> DeviceFactory::createDevices() {
     syslog(LOG_CRIT, "Device configure fail!");
     return devs; //TODO sth will do
   }
-  else 
+  else
   {
     syslog(LOG_CRIT, "Device configure success!");
   }
   OperationDefine opdef;
-    for (auto& element : js_["devices"]){ 
+    for (auto& element : js_["devices"]){
       std::string str_id=element["id"];
       char* id=(char*)str_id.c_str();
       syslog(LOG_CRIT,"Device has loded !!! id: %s",id);
@@ -119,16 +119,15 @@ std::vector<Device*> DeviceFactory::createDevices() {
       char* ip=(char*)str_ip.c_str();
       std::string str_type=element["type"];
       char* type=(char*)str_type.c_str();
-        
+
     Device *dev = new Device(ip, id);
     Broker *bro = kafDef_->getBroker(id);
     dev->attach(bro);
     Messager *mes = kafDef_->getMessager(id);
     dev->attach(mes);
     devs.push_back(dev);
-    std::vector<Operation*> ops = opdef.create(element["operate"], type);
+    std::vector<IoOperation*> ops = opdef.create(element["operate"], type);
     dev->setOpers(ops);
   }
   return devs;
 }
-

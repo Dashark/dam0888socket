@@ -31,7 +31,7 @@ AGVButtonMessager::AGVButtonMessager() {
                 "mpos" : "xxxx-xxx-xx-xx-xx",
                 "astep" : "xxxx-xxx-xx-xx-xx",
                 "time" : "2018/08/08 09:10:10"
-            } 
+            }
          }
 
     )"_json;
@@ -63,7 +63,10 @@ bool AGVButtonMessager::setKV(const std::string &key, const std::string &val) {
     js_["data"][key] = val;
     return true;
 }
-
+bool AGVButtonMessager::setDID(const std::string &did){
+  js_["data"]["devicesid"] = json::parse(did);
+  return true;
+}
 void AGVButtonMessager::dump() {
   syslog(LOG_INFO, "Message String : %s", js_.dump().c_str());
 }
@@ -82,7 +85,7 @@ DeviceStatusMessager::DeviceStatusMessager() {
            "data" : {
                 "deviceid" : "xxxx-xxx-xx-xx-xx",
                 "time" : "2018/08/08 09:10:10"
-            } 
+            }
          }
 
     )"_json;
@@ -113,6 +116,10 @@ bool DeviceStatusMessager::setTime(const std::string &time) {
 bool DeviceStatusMessager::setKV(const std::string &key, const std::string &val) {
     js_["data"][key] = val;
     return true;
+}
+
+bool DeviceStatusMessager::setDID(const std::string &did){
+  return true;
 }
 
 void DeviceStatusMessager::dump() {

@@ -28,9 +28,9 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
     //这里是电表数据的接入点
-    int newfd=fd_;
-    ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
-    em->creatElectricMeter();
+    // int newfd=fd_;
+    // ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
+    // em->creatElectricMeter();
 
   uint8_t *buf = new uint8_t[inputs_.size()];
   if(modbusRead(ctx, buf, inputs_.size()) <= 0) {

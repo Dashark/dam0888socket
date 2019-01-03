@@ -5,33 +5,34 @@
 #include "json.hpp"
 #include <iostream>
 using json = nlohmann::json;
-Operation::Operation(const char name[], int port, int addr):ioport_(port), ioaddr_(addr), name_(name) {
+IoOperation::IoOperation(const char name[], int port, int addr,const char deviceid[]):ioport_(port), ioaddr_(addr), name_(name),deviceid_(deviceid) {
   state_ = 0;
 
 }
 
-Operation::~Operation() {
+IoOperation::~IoOperation() {
 
 }
 
-bool Operation::execute(char state) {
+bool IoOperation::execute(char state) {
   bool ret = false;
   ret |= upSingal(state);
   ret |= downSingal(state);
   return ret;
 }
 
-std::string Operation::stateStr() {
+std::string IoOperation::stateStr() {
   std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
   return all;
 }
 
-std::string Operation::stateStr(Messager *mes) {
+std::string IoOperation::stateStr(Messager *mes) {
   mes->setKV(name_, (state_ == 0 ? "OFF" : "ON"));
+  mes->setDID(deviceid_);
   return "";
 }
 
-bool Operation::upSingal(char state) {
+bool IoOperation::upSingal(char state) {
   bool ret = false;
   if(state_ == 0 && state == 1) {
     state_ = state;
@@ -41,7 +42,7 @@ bool Operation::upSingal(char state) {
   return ret;
 }
 
-bool Operation::downSingal(char state) {
+bool IoOperation::downSingal(char state) {
   bool ret = false;
   if(state_ == 1 && state == 0) {
     state_ = state;
@@ -51,7 +52,7 @@ bool Operation::downSingal(char state) {
   return ret;
 }
 //////////////////////////////////////////////////////////////////////////
-UpOperation::UpOperation(const char name[], int port, int addr):Operation(name, port, addr) {
+UpOperation::UpOperation(const char name[], int port, int addr,const char deviceid[]):IoOperation(name, port, addr,deviceid) {
 
 }
 
@@ -74,8 +75,8 @@ OperationDefine::~OperationDefine() {
 }
 
 
-std::vector<Operation*> OperationDefine::create(const json operate, const std::string &type) {
-  std::vector<Operation*> ops; 
+std::vector<IoOperation*> OperationDefine::create(const json operate, const std::string &type) {
+  std::vector<IoOperation*> ops;
    //判断操作本身是否为空,operate可以是字符串,当其为空是空字符串
   if(operate=="")
   {
@@ -84,27 +85,29 @@ std::vector<Operation*> OperationDefine::create(const json operate, const std::s
  else
   {
        syslog(LOG_CRIT, "Device operation has loaded!");
-	for (auto& element : operate){ 
+	for (auto& element : operate){
 	    std::string str_name=element["name"];
 	    char* name=(char*)str_name.c_str();
-            std::string str_port=element["ioport"];
+      std::string str_port=element["ioport"];
 	    int port=std::stoi(str_port);
-            std::string str_addr=element["ioaddr"];
+      std::string str_addr=element["ioaddr"];
 	    int addr=std::stoi(str_addr);
-	    Operation *op = createOperation(type.c_str(), name, port, addr);
+      std::string str_devicesid=element["devicesid"].dump();
+	    char* devicesid=(char*)str_devicesid.c_str();
+	    IoOperation *op = createOperation(type.c_str(), name, port, addr,devicesid);
 	   ops.push_back(op);
 	 }
   }
-  
+
 
   return ops;
 }
 
-Operation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr) {
+IoOperation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]) {
   std::string ts(type);
 
   if(ts == "agv") {
-    return new UpOperation(name, port, addr);
+    return new UpOperation(name, port, addr,deviceid);
   }
-  return new Operation(name, port, addr);
+  return new IoOperation(name, port, addr,deviceid);
 }
