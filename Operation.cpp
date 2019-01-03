@@ -5,6 +5,19 @@
 #include "json.hpp"
 #include <iostream>
 using json = nlohmann::json;
+Operation::Operation(const char name[], int port):ioport_(port), name_(name) {
+
+
+}
+
+Operation::~Operation() {
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 IoOperation::IoOperation(const char name[], int port, int addr,const char deviceid[]):ioport_(port), ioaddr_(addr), name_(name),deviceid_(deviceid) {
   state_ = 0;
 
