@@ -8,19 +8,29 @@
 #include "Messager.hpp"
 #include "json.hpp"
 using json = nlohmann::json;
-class IoOperation {
+class Operation{
+protected:
+ const int ioport_;
+ const std::string name_;
+public:
+ Operation(const char name[], int port);
+ virtual ~Operation();
+ bool equalPort(int port) const {
+   return ioport_ == port ? true : false;
+ }
+ virtual std::string stateStr()=0;
+ virtual std::string stateStr(Messager *mes)=0;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class IoOperation:public Operation{
  private:
-  const int ioport_;
   const int ioaddr_;
-  const std::string name_;
   const std::string deviceid_;
   char state_;
  public:
   IoOperation(const char name[], int port, int addr,const char deviceid[]);
   virtual ~IoOperation();
-  bool equalPort(int port) const {
-    return ioport_ == port ? true : false;
-  }
   bool equalAddr(int addr) const {
     return ioaddr_ == addr ? true : false;
   }
@@ -32,6 +42,7 @@ class IoOperation {
   bool downSingal(char state);
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class UpOperation : public IoOperation {
  private:
 
@@ -41,7 +52,7 @@ class UpOperation : public IoOperation {
   virtual bool execute(char state);
 
 };
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class OperationDefine {
  private:
   GKeyFile *keyFile_;
@@ -53,5 +64,6 @@ class OperationDefine {
   IoOperation* createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]);
 
 };
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif
