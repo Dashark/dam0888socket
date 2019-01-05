@@ -12,11 +12,12 @@ class Device {
  private:
   const std::string ip_;
   const std::string id_;
+  const std::string type_;
   std::vector<IoOperation*> opers_;
   std::vector<Broker*> brokers_;
   std::vector<Messager*> messagers_;
  public:
-  Device(const char ip[], const char id[]);
+  Device(const char ip[], const char id[],const char type[]);
   ~Device();
   ////////////////////////////////////////////
   Device* equalIP(const std::string &ip) {
@@ -25,6 +26,11 @@ class Device {
   Device* equalID(const std::string &id) {
     return id_ == id ? this : nullptr;
   }
+
+  Device* equalType(const std::string &type) {
+    return type_ == type ? this : nullptr;
+  }
+
   void setOpers(std::vector<IoOperation*> &opers) {
     clearOpers();
     opers_ = opers;
@@ -37,10 +43,13 @@ class Device {
     if(mes != nullptr)
       messagers_.push_back(mes);
   }
+
   //////////////////////////////////////////////////////
   void update(int sid, const std::vector<char> &stats);
+  void update(int sid,const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]);
   std::string stateStr();
   std::string stateStr(Messager *mes);
+  std::string stateStrSmartMeter(Messager *mes);
  private:
   void clearOpers();
 };
