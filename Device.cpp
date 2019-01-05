@@ -17,20 +17,46 @@ Device::~Device() {
   clearOpers();
 }
 
-void Device::update(int sid, const std::vector<char> &stats) {
-  int idx = 0;
+void Device::update(int sid,const uint16_t stats[]) {
   bool newst = false;
-  for(char s : stats) {
-    for(IoOperation *oper : opers_) {
-    //     syslog(LOG_INFO, "模块数据与操作比对 模块id: %d,这个操作执行到%,IoOperation的地址",sid,idx,oper->ioaddr_);
-      if(oper->equalPort(sid) && oper->equalAddr(idx)) {
+  if(equalType("electricMeter"))
+  {
+     syslog(LOG_INFO, "电表数据采集");
+     int IrAt = 0, UrAt = 0; //电流互感器, 电压互感器变比
+     json js_m;
+        IrAt = stats[0];
+        UrAt = stats[1];
 
-        newst |= oper->execute(s);
-        break; //TODO one state for one operation
-      }
-    }
-    idx += 1;
+        js_m["Ua"] = modbus_get_float_dcba (&stats[2]) * UrAt * 0.1 * 0.1;
+        js_m["Ub"] = modbus_get_float_dcba (&stats[4]) * UrAt * 0.1 * 0.1;
+        js_m["Uc"] = modbus_get_float_dcba (&stats[6]) * UrAt * 0.1 * 0.1;
+
+        js_m["Ia"] = modbus_get_float_dcba (&stats[8]) * IrAt * 0.001;
+        js_m["Ib"] = modbus_get_float_dcba (&stats[10]) * IrAt * 0.001;
+        js_m["Ic"] = modbus_get_float_dcba (&stats[12]) * IrAt * 0.001;
+
+
+        js_m["Pt"] = modbus_get_float_dcba (&stats[14]) * UrAt * IrAt * 0.1 * 0.1;
+        js_m["Pa"] = modbus_get_float_dcba (&stats[16]) * UrAt * IrAt * 0.1 * 0.1;
+        js_m["Pb"] = modbus_get_float_dcba (&stats[18]) * UrAt * IrAt * 0.1 * 0.1;
+        js_m["Pc"] = modbus_get_float_dcba (&stats[20]) * UrAt * IrAt * 0.1 * 0.1;
+
+        js_m["ImpEp"] = modbus_get_float_dcba (&stats[22]) * UrAt * IrAt*0.1;
+     syslog(LOG_INFO,js_m.dump().c_str());
   }
+  else {
+    int idx = 0;
+    for(int i=0;i<sizeof(stats);i++) {
+      for(IoOperation *oper : opers_) {
+        if(oper->equalPort(sid) && oper->equalAddr(idx)) {
+          newst |= oper->execute(stats[i]);
+          break; //TODO one state for one operation
+        }
+      }
+      idx += 1;
+    }
+  }
+
   if(newst) {
     for(Messager *mes : messagers_) {
       if(mes != nullptr) {
