@@ -34,10 +34,10 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
     // em->creatElectricMeter();
 
   uint8_t *buf = new uint8_t[inputs_.size()];
+
   if(modbusRead(ctx, buf, inputs_.size()) <= 0) {
     return false;
   }
-
   int i = 0;
   bool ret = false;
   for(auto& bit : inputs_) {
@@ -97,6 +97,9 @@ ZLServer::SmartMeter::SmartMeter(const std::string &ip, int id): slaveID_(id) {
   assert(slaveID_ > 0);
   ip_ = ip;
   fd_ = -1;
+  parameter_= new uint16_t[2];
+  electricityData_= new uint16_t[20];
+  energyData_= new uint16_t[2];
 }
 
 ZLServer::SmartMeter::~SmartMeter() {
@@ -104,22 +107,20 @@ ZLServer::SmartMeter::~SmartMeter() {
 }
 
 bool ZLServer::SmartMeter::read(modbus_t *ctx) {
-  syslog (LOG_INFO,"进入read()方法,此时fd=%d",fd_);
   if(fd_ == -1)
     return false;
-  uint16_t *buf1 = new uint16_t[2];
-  if(modbusRead(ctx, buf1,0x06,2) <= 0) {
+  //uint16_t *buf1 = new uint16_t[2];
+  if(modbusRead(ctx, parameter_,0x06,2) <= 0) {
     return false;
   }
-  uint16_t *buf2 = new uint16_t[20];
-  if(modbusRead(ctx, buf2,0x2006, 20) <= 0) {
+  //uint16_t *buf2 = new uint16_t[20];
+  if(modbusRead(ctx, electricityData_,0x2006, 20) <= 0) {
     return false;
   }
-  uint16_t *buf3 = new uint16_t[2];
-  if(modbusRead(ctx, buf3, 0x401E, 2) <= 0) {
+  //uint16_t *buf3 = new uint16_t[2];
+  if(modbusRead(ctx, energyData_, 0x401E, 2) <= 0) {
     return false;
   }
-  syslog (LOG_INFO,"数据读取成功");
   return true;
 }
 
@@ -138,7 +139,7 @@ int ZLServer::SmartMeter::modbusRead(modbus_t *ctx, uint16_t buf[], int start_,i
   }
   ret = modbus_read_registers (ctx,start_,size, buf);
   if(ret == -1) {
-    syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
+    syslog(LOG_ERR, "modbus_read_registers failed! (%s)", strerror(errno));
     return ret;
   }
   return ret;
@@ -237,7 +238,7 @@ bool ZLServer::readAll() {
     if(ret)
       notify(mod->ip_, mod->slaveID_, mod->inputs_);
     ++moditer_;  //point to next model
-
+    usleep(4000);
   }
 
   smteriter_ = smteriter_ == sMeters_.end() ? sMeters_.begin() : smteriter_;
@@ -245,9 +246,9 @@ bool ZLServer::readAll() {
   if(sm != nullptr) {
     ret = sm->read(modbus_ctx_);
     if(ret)
-    //  notify(mod->ip_, mod->slaveID_, mod->inputs_);
-    syslog(LOG_INFO,"数据读取成功");
+     notify(sm->ip_, sm->slaveID_, sm->parameter_,sm->electricityData_,sm->energyData_);
     ++smteriter_;  //point to next model
+    usleep(4000);
   }
   return ret;
 }
