@@ -16,21 +16,9 @@ void Connection::detach(Device *device) {
 }
 
 void Connection::notify(const std::string &ip, int id,
-                        const std::vector<char> &buf) {
+                        const uint16_t buf[]) {
   for(Device *dev : devices_) {
     if(dev->equalIP(ip))
       dev->update(id, buf);
   }
-}
-void Connection::notify(const std::string &ip, int id,const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]){
-  if(times>=100) {
-    for(Device *dev : devices_)
-    {
-        if(dev->equalType("electricMeter"))
-          dev->update(id,parameter,electricityData,energyData);
-    }
-    times=0;
-    return ;
-  }
-  times++;
 }
