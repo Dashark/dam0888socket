@@ -19,6 +19,8 @@ Messager* MessagerDefine::create(const std::string &name) {
     return new AGVButtonMessager();
   if(name == "DeviceStatusMessager")
     return new DeviceStatusMessager();
+  if(name == "SmartMeterMessager")
+      return new SmartMeterMessager();
   return nullptr;
 }
 
@@ -127,6 +129,61 @@ void DeviceStatusMessager::dump() {
 }
 
 bool DeviceStatusMessager::send(Broker *bro) {
+  bro->write(js_.dump());
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+SmartMeterMessager::SmartMeterMessager() {
+  js_ = R"(
+         {
+           "kafkaType" : "XXXType",
+           "data" : {
+                "time" : "2018/08/08 09:10:10"
+            }
+         }
+
+    )"_json;
+
+  js_["kafkaType"] = "123";
+
+
+}
+
+SmartMeterMessager::~SmartMeterMessager() {
+
+}
+
+void SmartMeterMessager::setID(const std::string &id) {
+  js_["id"] = id;
+}
+
+bool SmartMeterMessager::setAStep(const std::string &step) {
+  js_["astep"] = step;
+  return true;
+}
+
+bool SmartMeterMessager::setTime(const std::string &time) {
+  js_["time"] = time;
+  return true;
+}
+
+bool SmartMeterMessager::setKV(const std::string &key, const std::string &val) {
+    js_["data"][key] = val;
+    return true;
+}
+
+bool SmartMeterMessager::setDID(const std::string &did){
+  js_["devicesid"] = json::parse(did);
+  return true;
+}
+
+void SmartMeterMessager::dump() {
+  syslog(LOG_INFO, "Message String : %s", js_.dump().c_str());
+}
+
+bool SmartMeterMessager::send(Broker *bro) {
   bro->write(js_.dump());
   return true;
 }
