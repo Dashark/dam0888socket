@@ -16,6 +16,7 @@ using json = nlohmann::json;
 ///////////////////////////////////////这一部分是io模块的server方法/////////////////////////////////////////////////////////////
 ZLServer::IOModel::IOModel(const std::string &ip, int id, int ins, int outs): slaveID_(id), inputs_(ins), outputs_(outs) {
 
+  notifys_=new uint16_t[ins];
   assert(slaveID_ > 0);
   ip_ = ip;
   fd_ = -1;
@@ -33,19 +34,17 @@ bool ZLServer::IOModel::read(modbus_t *ctx) {
     // ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
     // em->creatElectricMeter();
 
-  uint8_t *buf = new uint8_t[inputs_.size()];
+  uint8_t *buf = new uint8_t[sizeof(notifys_)];
 
-  if(modbusRead(ctx, buf, inputs_.size()) <= 0) {
+  if(modbusRead(ctx, buf, sizeof(notifys_)) <= 0) {
     return false;
   }
-  int i = 0;
   bool ret = false;
-  for(auto& bit : inputs_) {
-    if(bit != buf[i]) {
-      bit = buf[i];
+  for(int i=0;i<sizeof(notifys_);i++) {
+    if(notifys_[i] != buf[i]) {
+      notifys_[i] = buf[i];
       ret = true;
     }
-    i += 1;
   }
   delete[] buf;
   return ret;
@@ -100,6 +99,7 @@ ZLServer::SmartMeter::SmartMeter(const std::string &ip, int id): slaveID_(id) {
   parameter_= new uint16_t[2];
   electricityData_= new uint16_t[20];
   energyData_= new uint16_t[2];
+  notifys_=new uint16_t[24];
 }
 
 ZLServer::SmartMeter::~SmartMeter() {
@@ -109,8 +109,22 @@ ZLServer::SmartMeter::~SmartMeter() {
 bool ZLServer::SmartMeter::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
-  //uint16_t *buf1 = new uint16_t[2];
-  if(modbusRead(ctx, parameter_,0x06,2) <= 0) {
+  uint16_t *buf1 = new uint16_t[2];
+  if(modbusRead(ctx,buf1,0x06,2) > 0){
+    for(int i=0;i<2;i++) notifys_[i]=buf1[i];delete[] buf1;buf1=NULL;
+  }
+  else return false;
+  uint16_t *buf2 = new uint16_t[20];
+  if(modbusRead(ctx, buf2,0x2006, 20) > 0) {
+  for(int i=0;i<20;i++) notifys_[i+2]=buf2[i];delete[] buf2;buf2=NULL;
+  }
+  else return false;
+  uint16_t *buf3 = new uint16_t[2];
+  if(modbusRead(ctx, buf3, 0x401E, 2) > 0) {
+    for(int i=0;i<2;i++) notifys_[i+22]=buf3[i];delete[] buf3;buf3=NULL;
+  }
+  else return false;
+  if(modbusRead(ctx,parameter_,0x06,2) <= 0) {
     return false;
   }
   //uint16_t *buf2 = new uint16_t[20];
@@ -236,7 +250,7 @@ bool ZLServer::readAll() {
   if(mod != nullptr) {
     ret = mod->read(modbus_ctx_);
     if(ret)
-      notify(mod->ip_, mod->slaveID_, mod->inputs_);
+      notify(mod->ip_, mod->slaveID_, mod->notifys_);
     ++moditer_;  //point to next model
     usleep(4000);
   }
@@ -246,7 +260,7 @@ bool ZLServer::readAll() {
   if(sm != nullptr) {
     ret = sm->read(modbus_ctx_);
     if(ret)
-     notify(sm->ip_, sm->slaveID_, sm->parameter_,sm->electricityData_,sm->energyData_);
+     notify(sm->ip_, sm->slaveID_, sm->notifys_);
     ++smteriter_;  //point to next model
     usleep(4000);
   }
