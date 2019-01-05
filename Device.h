@@ -45,7 +45,7 @@ class Device {
   }
 
   //////////////////////////////////////////////////////
-  void update(int sid, const std::vector<char> &stats);
+  void update(int sid, const uint16_t stats[]);
   void update(int sid,const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]);
   std::string stateStr();
   std::string stateStr(Messager *mes);
