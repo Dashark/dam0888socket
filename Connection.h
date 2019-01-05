@@ -13,10 +13,7 @@ class Connection {
   Connection();
   void attach(Device *device);
   void detach(Device *device);
-  void notify(const std::string &ip, int id,
-              const std::vector<char> &buf);
-  void notify(const std::string &ip, int id,
-              const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]);
+  void notify(const std::string &ip, int id,const uint16_t buf[]);
 };
 
 #endif
