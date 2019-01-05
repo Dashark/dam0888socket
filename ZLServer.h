@@ -45,7 +45,7 @@ class IOModel {
 class SmartMeter {
  public:
   const int slaveID_;
-  std::vector<char> inputs_, outputs_;
+  uint16_t *parameter_, *electricityData_, *energyData_;
   std::string ip_;
   int fd_;
 
