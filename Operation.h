@@ -23,14 +23,19 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class IoOperation:public Operation{
+class IoOperation{
  private:
+   const int ioport_;
+   const std::string name_;
   const int ioaddr_;
   const std::string deviceid_;
   char state_;
  public:
   IoOperation(const char name[], int port, int addr,const char deviceid[]);
   virtual ~IoOperation();
+  bool equalPort(int port) const {
+    return ioport_ == port ? true : false;
+  }
   bool equalAddr(int addr) const {
     return ioaddr_ == addr ? true : false;
   }
