@@ -12,34 +12,33 @@ class Operation{
 protected:
  const int ioport_;
  const std::string name_;
+ const int ioaddr_;
+ const std::string deviceid_;
 public:
- Operation(const char name[], int port);
+ Operation(const char name[], int port, int addr,const char deviceid[]);
  virtual ~Operation();
+ virtual std::string stateStr()=0;
+ virtual std::string stateStr(Messager *mes)=0;
+ virtual bool execute(char state)=0;
  bool equalPort(int port) const {
    return ioport_ == port ? true : false;
  }
- virtual std::string stateStr()=0;
- virtual std::string stateStr(Messager *mes)=0;
+ bool equalAddr(int addr) const {
+   return ioaddr_ == addr ? true : false;
+ }
+
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class IoOperation{
+class IoOperation:public Operation{
  private:
-   const int ioport_;
-   const std::string name_;
-  const int ioaddr_;
-  const std::string deviceid_;
+
   char state_;
  public:
-  IoOperation(const char name[], int port, int addr,const char deviceid[]);
+  IoOperation(const char name[],int port, int addr,const char deviceid[]);
   virtual ~IoOperation();
-  bool equalPort(int port) const {
-    return ioport_ == port ? true : false;
-  }
-  bool equalAddr(int addr) const {
-    return ioaddr_ == addr ? true : false;
-  }
   virtual bool execute(char state);
+
   virtual std::string stateStr();
   virtual std::string stateStr(Messager *mes);
  protected:
@@ -64,9 +63,9 @@ class OperationDefine {
  public:
   OperationDefine();
   ~OperationDefine();
-  std::vector<IoOperation*> create(const json operate, const std::string &type);
+  std::vector<Operation*> create(const json operate, const std::string &type);
  private:
-  IoOperation* createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]);
+  Operation* createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]);
 
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
