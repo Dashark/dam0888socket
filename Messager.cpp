@@ -140,7 +140,7 @@ SmartMeterMessager::SmartMeterMessager() {
          {
            "kafkaType" : "XXXType",
            "data" : {
-                "time" : "2018/08/08 09:10:10"
+          
             }
          }
 
