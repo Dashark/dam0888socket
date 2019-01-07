@@ -2,6 +2,7 @@
 #include <string>
 #include <syslog.h>
 #include <sstream>
+#include <modbus.h>
 #include "json.hpp"
 #include <iostream>
 using json = nlohmann::json;
@@ -26,9 +27,14 @@ IoOperation::~IoOperation() {
 
 bool IoOperation::execute(char state) {
   bool ret = false;
-  ret |= upSingal(state);
-  ret |= downSingal(state);
+
+   ret |= upSingal(state);
+   ret |= downSingal(state);
   return ret;
+}
+
+bool IoOperation::execute(const uint16_t state[]) {
+
 }
 
 std::string IoOperation::stateStr() {
@@ -62,6 +68,85 @@ bool IoOperation::downSingal(char state) {
   return ret;
 }
 //////////////////////////////////////////////////////////////////////////
+SmOperation::SmOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+state_ = 0;
+times=0;
+}
+
+SmOperation::~SmOperation() {
+
+}
+
+bool SmOperation::execute(const uint16_t state[]) {
+  state_=state;
+  if(times>100)
+  {
+    times=0;
+    return true;
+  }
+  times++;
+  return false;
+}
+bool SmOperation::execute(char state) {
+  return false;
+}
+
+std::string SmOperation::stateStr() {
+  std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
+  return all;
+}
+
+std::string SmOperation::stateStr(Messager *mes) {
+  //读取电压
+  mes->setKV("Ua", readU(state_,2));
+  mes->setKV("Ub", readU(state_,4));
+  mes->setKV("Uc", readU(state_,6));
+  //读取电流
+  mes->setKV("Ia", readU(state_,8));
+  mes->setKV("Ib", readU(state_,10));
+  mes->setKV("Ic", readU(state_,12));
+  //读取功率
+  mes->setKV("Pt", readU(state_,14));
+  mes->setKV("Pa", readU(state_,16));
+  mes->setKV("Pb", readU(state_,18));
+  mes->setKV("Pc", readU(state_,20));
+  //读取总功率
+  mes->setKV("ImpEp", readU(state_,22));
+
+  mes->setDID(deviceid_);
+  return "";
+}
+
+std::string SmOperation::readU(const uint16_t state[],int startaddr){
+  std::ostringstream oss;
+  int UrAt = state[1]; //电压互感器变比
+  oss<<modbus_get_float_dcba (&state[startaddr]) * UrAt * 0.1 * 0.1;
+  return oss.str();
+}
+std::string SmOperation::readI(const uint16_t state[],int startaddr){
+  std::ostringstream oss;
+  int IrAt = state[0]; //电流互感器变比
+  oss<<modbus_get_float_dcba (&state[startaddr]) * IrAt * 0.001;
+  return oss.str();
+}
+std::string SmOperation::readPt(const uint16_t state[],int startaddr){
+  int IrAt = 0, UrAt = 0; //电流互感器, 电压互感器变比
+  std::ostringstream oss;
+  IrAt = state[0];
+  UrAt = state[1];
+  oss<<modbus_get_float_dcba (&state[startaddr]) * UrAt * IrAt * 0.1 * 0.1;
+  return oss.str();
+}
+std::string SmOperation::readImpEp(const uint16_t state[],int startaddr){
+  int IrAt = 0, UrAt = 0; //电流互感器, 电压互感器变比
+  std::ostringstream oss;
+  IrAt = state[0];
+  UrAt = state[1];
+  oss<<modbus_get_float_dcba (&state[startaddr]) * UrAt * IrAt*0.1;
+  return oss.str();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UpOperation::UpOperation(const char name[], int port, int addr,const char deviceid[]):IoOperation(name, port, addr,deviceid) {
 
 }
@@ -75,6 +160,9 @@ bool UpOperation::execute(char state) {
   return upSingal(state);
 }
 
+bool UpOperation::execute(const uint16_t state[]) {
+
+}
 //////////////////////////////////////////////////////////////////////////
 OperationDefine::OperationDefine() {
   keyFile_ = g_key_file_new();
@@ -116,6 +204,10 @@ Operation* OperationDefine::createOperation(const char type[], const char name[]
 
   if(ts == "agv") {
     return new UpOperation(name, port, addr,deviceid);
+  }
+  else if(ts=="electricMeter")
+  {
+    return new SmOperation(name, port, addr,deviceid);
   }
   return new IoOperation(name, port, addr,deviceid);
 }
