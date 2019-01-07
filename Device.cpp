@@ -47,7 +47,7 @@ void Device::update(int sid,const uint16_t stats[]) {
   else {
     int idx = 0;
     for(int i=0;i<sizeof(stats);i++) {
-      for(IoOperation *oper : opers_) {
+      for(Operation *oper : opers_) {
         if(oper->equalPort(sid) && oper->equalAddr(idx)) {
           newst |= oper->execute(stats[i]);
           break; //TODO one state for one operation
@@ -73,7 +73,7 @@ void Device::update(int sid,const uint16_t stats[]) {
 
 void Device::update(int sid,const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]){
   bool newst = false;
-    for(IoOperation *oper : opers_) {
+    for(Operation *oper : opers_) {
       syslog(LOG_INFO,"查询需要的id");
       if(oper->equalPort(sid)) {
         newst =true;
@@ -125,7 +125,7 @@ syslog(LOG_INFO, "电表查询 : %d",sid);
 
 std::string Device::stateStr() {
   std::string all = "{\"kafkaType\":\"x\",\"data\":{\"mpos\":\"" + id_ + "\"";
-  for(IoOperation* oper : opers_) {
+  for(Operation* oper : opers_) {
     all += ",";
     assert(oper != nullptr);
     all += oper->stateStr();
@@ -145,7 +145,7 @@ std::string Device::stateStr() {
 
 std::string Device::stateStr(Messager *mes) {
   mes->setID(id_);
-  for(IoOperation* oper : opers_) {
+  for(Operation* oper : opers_) {
     assert(oper != nullptr);
     oper->stateStr(mes);
   }
@@ -165,10 +165,7 @@ std::string Device::stateStr(Messager *mes) {
 std::string Device::stateStrSmartMeter(Messager *mes) {
   mes->setID(id_);
   mes->setKV("minwei","好男人");
-  mes->setKV("minwei","好男人");
-  mes->setKV("minwei","好男人");
-  mes->setKV("minwei","好男人");
-  for(IoOperation* oper : opers_) {
+  for(Operation* oper : opers_) {
     assert(oper != nullptr);
     oper->stateStr(mes);
   }
@@ -186,7 +183,7 @@ std::string Device::stateStrSmartMeter(Messager *mes) {
 }
 
 void Device::clearOpers() {
-  for(IoOperation* oper : opers_)
+  for(Operation* oper : opers_)
     delete oper;
   opers_.clear();
 }
@@ -230,7 +227,7 @@ std::vector<Device*> DeviceFactory::createDevices() {
     Messager *mes = kafDef_->getMessager(id);
     dev->attach(mes);
     devs.push_back(dev);
-    std::vector<IoOperation*> ops = opdef.create(element["operate"], type);
+    std::vector<Operation*> ops = opdef.create(element["operate"], type);
     dev->setOpers(ops);
   }
   return devs;
