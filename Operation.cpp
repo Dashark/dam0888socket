@@ -5,9 +5,7 @@
 #include "json.hpp"
 #include <iostream>
 using json = nlohmann::json;
-Operation::Operation(const char name[], int port):ioport_(port), name_(name) {
-
-
+Operation::Operation(const char name[], int port, int addr,const char deviceid[]):name_(name),ioport_(port), ioaddr_(addr),deviceid_(deviceid) {
 }
 
 Operation::~Operation() {
@@ -18,9 +16,8 @@ Operation::~Operation() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-IoOperation::IoOperation(const char name[], int port, int addr,const char deviceid[]):ioport_(port), ioaddr_(addr), name_(name),deviceid_(deviceid) {
-  state_ = 0;
-
+IoOperation::IoOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+state_ = 0;
 }
 
 IoOperation::~IoOperation() {
@@ -88,8 +85,8 @@ OperationDefine::~OperationDefine() {
 }
 
 
-std::vector<IoOperation*> OperationDefine::create(const json operate, const std::string &type) {
-  std::vector<IoOperation*> ops;
+std::vector<Operation*> OperationDefine::create(const json operate, const std::string &type) {
+  std::vector<Operation*> ops;
    //判断操作本身是否为空,operate可以是字符串,当其为空是空字符串
   if(operate=="")
   {
@@ -107,16 +104,14 @@ std::vector<IoOperation*> OperationDefine::create(const json operate, const std:
 	    int addr=std::stoi(str_addr);
       std::string str_devicesid=element["devicesid"].dump();
 	    char* devicesid=(char*)str_devicesid.c_str();
-	    IoOperation *op = createOperation(type.c_str(), name, port, addr,devicesid);
+	    Operation *op = createOperation(type.c_str(), name, port, addr,devicesid);
 	   ops.push_back(op);
 	 }
   }
-
-
   return ops;
 }
 
-IoOperation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]) {
+Operation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]) {
   std::string ts(type);
 
   if(ts == "agv") {
