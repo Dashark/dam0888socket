@@ -7,7 +7,6 @@
 #include <cassert>
 #include "json.hpp"
 #include <iostream>
-#include <modbus.h>
 using json = nlohmann::json;
 Device::Device(const char ip[], const char id[],const char type[]):ip_(ip), id_(id),type_(type) {
 
@@ -21,28 +20,12 @@ void Device::update(int sid,const uint16_t stats[]) {
   bool newst = false;
   if(equalType("electricMeter"))
   {
-     syslog(LOG_INFO, "电表数据采集");
-     int IrAt = 0, UrAt = 0; //电流互感器, 电压互感器变比
-     json js_m;
-        IrAt = stats[0];
-        UrAt = stats[1];
-
-        js_m["Ua"] = modbus_get_float_dcba (&stats[2]) * UrAt * 0.1 * 0.1;
-        js_m["Ub"] = modbus_get_float_dcba (&stats[4]) * UrAt * 0.1 * 0.1;
-        js_m["Uc"] = modbus_get_float_dcba (&stats[6]) * UrAt * 0.1 * 0.1;
-
-        js_m["Ia"] = modbus_get_float_dcba (&stats[8]) * IrAt * 0.001;
-        js_m["Ib"] = modbus_get_float_dcba (&stats[10]) * IrAt * 0.001;
-        js_m["Ic"] = modbus_get_float_dcba (&stats[12]) * IrAt * 0.001;
-
-
-        js_m["Pt"] = modbus_get_float_dcba (&stats[14]) * UrAt * IrAt * 0.1 * 0.1;
-        js_m["Pa"] = modbus_get_float_dcba (&stats[16]) * UrAt * IrAt * 0.1 * 0.1;
-        js_m["Pb"] = modbus_get_float_dcba (&stats[18]) * UrAt * IrAt * 0.1 * 0.1;
-        js_m["Pc"] = modbus_get_float_dcba (&stats[20]) * UrAt * IrAt * 0.1 * 0.1;
-
-        js_m["ImpEp"] = modbus_get_float_dcba (&stats[22]) * UrAt * IrAt*0.1;
-     syslog(LOG_INFO,js_m.dump().c_str());
+       for(Operation *oper : opers_) {
+         if(oper->equalPort(sid)) {
+           if(oper->execute(stats))
+           newst=true;
+         }
+       }
   }
   else {
     int idx = 0;
@@ -69,58 +52,6 @@ void Device::update(int sid,const uint16_t stats[]) {
       }
     }
   }
-}
-
-void Device::update(int sid,const uint16_t parameter[],const uint16_t electricityData[],const uint16_t energyData[]){
-  bool newst = false;
-    for(Operation *oper : opers_) {
-      syslog(LOG_INFO,"查询需要的id");
-      if(oper->equalPort(sid)) {
-        newst =true;
-        syslog(LOG_INFO,"查到了需要的id");
-        break; //TODO one state for one operation
-      }
-    }
-  if(newst) {
-    syslog(LOG_INFO,"进入消息的遍历");
-    for(Messager *mes : messagers_) {
-      syslog(LOG_INFO,"消息的遍历");
-      if(mes != nullptr) {
-        syslog(LOG_INFO,"开始执行stateStrSmartMeter()");
-        stateStrSmartMeter(mes);
-        for(Broker *bk : brokers_) {
-          if(bk != nullptr) {
-            mes->send(bk);
-          }
-        }
-      }
-    }
-  }
-
-
-syslog(LOG_INFO, "电表查询 : %d",sid);
-   int IrAt = 0, UrAt = 0; //电流互感器, 电压互感器变比
-   json js_m;
-      IrAt = parameter[0];
-      UrAt = parameter[1];
-
-      js_m["Ua"] = modbus_get_float_dcba (&electricityData[0]) * UrAt * 0.1 * 0.1;
-      js_m["Ub"] = modbus_get_float_dcba (&electricityData[2]) * UrAt * 0.1 * 0.1;
-      js_m["Uc"] = modbus_get_float_dcba (&electricityData[4]) * UrAt * 0.1 * 0.1;
-
-      js_m["Ia"] = modbus_get_float_dcba (&electricityData[6]) * IrAt * 0.001;
-      js_m["Ib"] = modbus_get_float_dcba (&electricityData[8]) * IrAt * 0.001;
-      js_m["Ic"] = modbus_get_float_dcba (&electricityData[10]) * IrAt * 0.001;
-
-
-      js_m["Pt"] = modbus_get_float_dcba (&electricityData[12]) * UrAt * IrAt * 0.1 * 0.1;
-      js_m["Pa"] = modbus_get_float_dcba (&electricityData[14]) * UrAt * IrAt * 0.1 * 0.1;
-      js_m["Pb"] = modbus_get_float_dcba (&electricityData[16]) * UrAt * IrAt * 0.1 * 0.1;
-      js_m["Pc"] = modbus_get_float_dcba (&electricityData[18]) * UrAt * IrAt * 0.1 * 0.1;
-
-      js_m["ImpEp"] = modbus_get_float_dcba (energyData) * UrAt * IrAt*0.1;
-   syslog(LOG_INFO,js_m.dump().c_str());
-
 }
 
 std::string Device::stateStr() {
