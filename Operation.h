@@ -20,6 +20,7 @@ public:
  virtual std::string stateStr()=0;
  virtual std::string stateStr(Messager *mes)=0;
  virtual bool execute(char state)=0;
+ virtual bool execute(const uint16_t state[])=0;
  bool equalPort(int port) const {
    return ioport_ == port ? true : false;
  }
@@ -32,20 +33,37 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class IoOperation:public Operation{
  private:
-
   char state_;
  public:
   IoOperation(const char name[],int port, int addr,const char deviceid[]);
   virtual ~IoOperation();
   virtual bool execute(char state);
-
+  virtual bool execute(const uint16_t state[]);
   virtual std::string stateStr();
   virtual std::string stateStr(Messager *mes);
  protected:
   bool upSingal(char state);
   bool downSingal(char state);
 };
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class SmOperation:public Operation{
+ private:
+  const uint16_t *state_;
+  int times;
+ public:
+  SmOperation(const char name[],int port, int addr,const char deviceid[]);
+  virtual ~SmOperation();
+  virtual bool execute(const uint16_t state[]);
+  virtual bool execute(char state);
+  virtual std::string stateStr();
+  virtual std::string stateStr(Messager *mes);
+ protected:
+   std::string readU(const uint16_t state[],int startaddr);
+   std::string readI(const uint16_t state[],int startaddr);
+   std::string readPt(const uint16_t state[],int startaddr);
+   std::string readImpEp(const uint16_t state[],int startaddr);
+};
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class UpOperation : public IoOperation {
  private:
@@ -54,7 +72,7 @@ class UpOperation : public IoOperation {
   UpOperation(const char name[], int port, int addr,const char deviceid[]);
   virtual ~UpOperation();
   virtual bool execute(char state);
-
+  virtual bool execute(const uint16_t state[]);
 };
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class OperationDefine {
