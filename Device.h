@@ -13,7 +13,7 @@ class Device {
   const std::string ip_;
   const std::string id_;
   const std::string type_;
-  std::vector<IoOperation*> opers_;
+  std::vector<Operation*> opers_;
   std::vector<Broker*> brokers_;
   std::vector<Messager*> messagers_;
  public:
@@ -31,7 +31,7 @@ class Device {
     return type_ == type ? this : nullptr;
   }
 
-  void setOpers(std::vector<IoOperation*> &opers) {
+  void setOpers(std::vector<Operation*> &opers) {
     clearOpers();
     opers_ = opers;
   }
