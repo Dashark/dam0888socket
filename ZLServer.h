@@ -39,7 +39,7 @@ class IOModel {
   bool setFileDesc(int fd);
  private:
   int modbusRead(modbus_t *ctx, uint8_t buf[], int size);
-  bool modbusWrite(modbus_t *ctx, char buf[], int size);
+  int modbusWrite(modbus_t *ctx, uint8_t buf[], int size);
 };
 
 ////////////////////////////////////这是智能电表的提前声明//////////////////////////////////////////////////////////////////
