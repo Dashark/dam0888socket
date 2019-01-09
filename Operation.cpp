@@ -102,16 +102,16 @@ std::string SmOperation::stateStr(Messager *mes) {
   mes->setKV("Ub", readU(state_,4));
   mes->setKV("Uc", readU(state_,6));
   //读取电流
-  mes->setKV("Ia", readU(state_,8));
-  mes->setKV("Ib", readU(state_,10));
-  mes->setKV("Ic", readU(state_,12));
+  mes->setKV("Ia", readI(state_,8));
+  mes->setKV("Ib", readI(state_,10));
+  mes->setKV("Ic", readI(state_,12));
   //读取功率
-  mes->setKV("Pt", readU(state_,14));
-  mes->setKV("Pa", readU(state_,16));
-  mes->setKV("Pb", readU(state_,18));
-  mes->setKV("Pc", readU(state_,20));
+  mes->setKV("Pt", readPt(state_,14));
+  mes->setKV("Pa", readPt(state_,16));
+  mes->setKV("Pb", readPt(state_,18));
+  mes->setKV("Pc", readPt(state_,20));
   //读取总功率
-  mes->setKV("ImpEp", readU(state_,22));
+  mes->setKV("ImpEp", readImpEp(state_,22));
 
   mes->setDID(deviceid_);
   return "";
