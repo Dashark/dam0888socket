@@ -74,16 +74,39 @@ int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
 }
 
 void ZLServer::IOModel::write(modbus_t *ctx) {
-  /*int i = 0;
-  for(auto& bit : outputs_) {
-    bit = buf[i];
-    i += 1;
-  }
-  */
+  if(fd_ == -1)
+    return ;
+    syslog(LOG_INFO,"开始写了");
+  uint8_t rbuf[]={0,0,0,0,1,1,1,1};
+  // int i = 0;
+  // for(auto& bit : outputs_) {
+  //   bit = buf[i];
+  //   i += 1;
+  // }
+  modbusWrite(ctx,rbuf,8);
 }
 
-bool ZLServer::IOModel::modbusWrite(modbus_t *ctx, char buf[], int size) {
-  return false;
+int ZLServer::IOModel::modbusWrite(modbus_t *ctx, uint8_t buf[], int size) {
+  assert(ctx != nullptr && fd_ != -1);
+  int ret = 0;
+  ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_socket failed! (%s)", strerror(errno));
+    return ret;
+  }
+
+  ret = modbus_set_slave(ctx, slaveID_);
+  //printf("%d\n", slaveID_);
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
+    return ret;
+  }
+  ret = modbus_write_bits(ctx, 0, size, buf);
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
+    return ret;
+  }
+  return ret;
 }
 
 bool ZLServer::IOModel::setFileDesc(int fd) {
@@ -249,6 +272,7 @@ bool ZLServer::readAll() {
   IOModel* mod = (*moditer_);
   if(mod != nullptr) {
     ret = mod->read(modbus_ctx_);
+    mod->write(modbus_ctx_);
     if(ret)
       notify(mod->ip_, mod->slaveID_, mod->notifys_);
     ++moditer_;  //point to next model
