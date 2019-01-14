@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 #include <glib.h>
-
 #include "Messager.hpp"
 #include "json.hpp"
+class ZLServer;
 using json = nlohmann::json;
 class Operation{
 protected:
@@ -21,24 +21,28 @@ public:
  virtual std::string stateStr(Messager *mes)=0;
  virtual bool execute(char state)=0;
  virtual bool execute(const uint16_t state[])=0;
+ virtual bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state)=0;
  bool equalPort(int port) const {
    return ioport_ == port ? true : false;
  }
  bool equalAddr(int addr) const {
    return ioaddr_ == addr ? true : false;
  }
-
+ bool equalName(const std::string name) const {
+   return name_ == name ? true : false;
+ }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class IoOperation:public Operation{
+class ReadOperation:public Operation{
  private:
   char state_;
  public:
-  IoOperation(const char name[],int port, int addr,const char deviceid[]);
-  virtual ~IoOperation();
+  ReadOperation(const char name[],int port, int addr,const char deviceid[]);
+  virtual ~ReadOperation();
   virtual bool execute(char state);
   virtual bool execute(const uint16_t state[]);
+  bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state){};
   virtual std::string stateStr();
   virtual std::string stateStr(Messager *mes);
  protected:
@@ -56,6 +60,7 @@ class SmOperation:public Operation{
   virtual ~SmOperation();
   virtual bool execute(const uint16_t state[]);
   virtual bool execute(char state);
+  bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state){};
   virtual std::string stateStr();
   virtual std::string stateStr(Messager *mes);
  protected:
@@ -65,7 +70,26 @@ class SmOperation:public Operation{
    std::string readImpEp(const uint16_t state[],int startaddr);
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class UpOperation : public IoOperation {
+
+class WriteOperation:public Operation{
+ private:
+  const uint16_t *state_;
+  int times_;
+  int state_now;
+ public:
+  WriteOperation(const char name[],int port, int addr,const char deviceid[]);
+  virtual ~WriteOperation();
+  virtual bool execute(const uint16_t state[]);
+  virtual bool execute(char state);
+  virtual bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state);
+  virtual std::string stateStr();
+  virtual std::string stateStr(Messager *mes);
+ protected:
+   int OpenOrOff(std::string state);
+   bool flashing(int times);
+};
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class UpOperation : public ReadOperation {
  private:
 
  public:
