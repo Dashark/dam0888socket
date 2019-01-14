@@ -1,13 +1,13 @@
 #ifndef _DEVICE_H_
 #define _DEVICE_H_
-
+class Connection;
 #include <string>
 #include <vector>
 #include <glib.h>
 #include "Operation.h"
 #include "Broker.h"
 #include "Messager.hpp"
-
+class ZLServer;
 class Device {
  private:
   const std::string ip_;
@@ -16,6 +16,7 @@ class Device {
   std::vector<Operation*> opers_;
   std::vector<Broker*> brokers_;
   std::vector<Messager*> messagers_;
+  ZLServer* server_;
  public:
   Device(const char ip[], const char id[],const char type[]);
   ~Device();
@@ -30,7 +31,9 @@ class Device {
   Device* equalType(const std::string &type) {
     return type_ == type ? this : nullptr;
   }
-
+  void setServer(ZLServer* server) {
+    server_=server;
+  }
   void setOpers(std::vector<Operation*> &opers) {
     clearOpers();
     opers_ = opers;
@@ -46,6 +49,7 @@ class Device {
 
   //////////////////////////////////////////////////////
   void update(int sid, const uint16_t stats[]);
+  void update();
   std::string stateStr();
   std::string stateStr(Messager *mes);
   std::string stateStrSmartMeter(Messager *mes);
