@@ -4,6 +4,7 @@
 #include <sstream>
 #include <modbus.h>
 #include "json.hpp"
+#include "ZLServer.h"
 #include <iostream>
 using json = nlohmann::json;
 Operation::Operation(const char name[], int port, int addr,const char deviceid[]):name_(name),ioport_(port), ioaddr_(addr),deviceid_(deviceid) {
@@ -17,15 +18,15 @@ Operation::~Operation() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-IoOperation::IoOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+ReadOperation::ReadOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
 state_ = 0;
 }
 
-IoOperation::~IoOperation() {
+ReadOperation::~ReadOperation() {
 
 }
 
-bool IoOperation::execute(char state) {
+bool ReadOperation::execute(char state) {
   bool ret = false;
 
    ret |= upSingal(state);
@@ -33,22 +34,22 @@ bool IoOperation::execute(char state) {
   return ret;
 }
 
-bool IoOperation::execute(const uint16_t state[]) {
+bool ReadOperation::execute(const uint16_t state[]) {
 
 }
 
-std::string IoOperation::stateStr() {
+std::string ReadOperation::stateStr() {
   std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
   return all;
 }
 
-std::string IoOperation::stateStr(Messager *mes) {
+std::string ReadOperation::stateStr(Messager *mes) {
   mes->setKV(name_, (state_ == 0 ? "OFF" : "ON"));
   mes->setDID(deviceid_);
   return "";
 }
 
-bool IoOperation::upSingal(char state) {
+bool ReadOperation::upSingal(char state) {
   bool ret = false;
   if(state_ == 0 && state == 1) {
     state_ = state;
@@ -58,7 +59,7 @@ bool IoOperation::upSingal(char state) {
   return ret;
 }
 
-bool IoOperation::downSingal(char state) {
+bool ReadOperation::downSingal(char state) {
   bool ret = false;
   if(state_ == 1 && state == 0) {
     state_ = state;
@@ -145,9 +146,59 @@ std::string SmOperation::readImpEp(const uint16_t state[],int startaddr){
   oss<<modbus_get_float_dcba (&state[startaddr]) * UrAt * IrAt*0.1;
   return oss.str();
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+WriteOperation::WriteOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+state_ = 0;
+times_=0;
+state_now=false;
+}
+
+WriteOperation::~WriteOperation() {
+
+}
+
+bool WriteOperation::execute(const uint16_t state[]) {
+
+}
+bool WriteOperation::execute(char state) {
+}
+bool WriteOperation::execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state)
+{
+   if(name.compare(name))return false;
+   else{
+    if(flashing(2))
+    server->write(ip,ioport_,ioaddr_,state_now);
+   }
+}
+
+std::string WriteOperation::stateStr() {
+  std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
+  return all;
+}
+
+std::string WriteOperation::stateStr(Messager *mes) {
+
+  return "";
+}
+ int WriteOperation::OpenOrOff(std::string state){
+   syslog(LOG_INFO,"The device:%s has been %s",name_.c_str(),state.c_str());
+  (state=="on")?state_now=1:state_now=0;
+ }
+
+bool WriteOperation::flashing(int times)
+{
+  if(times_<times)
+  {
+    times_++;
+    return false;
+  }
+  times_=0;
+  (state_now==1)?OpenOrOff("off"):OpenOrOff("on");
+  return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-UpOperation::UpOperation(const char name[], int port, int addr,const char deviceid[]):IoOperation(name, port, addr,deviceid) {
+UpOperation::UpOperation(const char name[], int port, int addr,const char deviceid[]):ReadOperation(name, port, addr,deviceid) {
 
 }
 
@@ -209,5 +260,8 @@ Operation* OperationDefine::createOperation(const char type[], const char name[]
   {
     return new SmOperation(name, port, addr,deviceid);
   }
-  return new IoOperation(name, port, addr,deviceid);
+  else if(ts=="controllableDevice"){
+      return new WriteOperation(name, port, addr,deviceid);
+  }
+  return new ReadOperation(name, port, addr,deviceid);
 }
