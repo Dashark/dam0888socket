@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include "json.hpp"
+#include "ZLServer.h"
 #include <iostream>
 using json = nlohmann::json;
 Device::Device(const char ip[], const char id[],const char type[]):ip_(ip), id_(id),type_(type) {
@@ -26,6 +27,10 @@ void Device::update(int sid,const uint16_t stats[]) {
            newst=true;
          }
        }
+  }
+  else if(equalType("controllableDevice"))
+  {
+    update();
   }
   else {
     int idx = 0;
@@ -51,6 +56,11 @@ void Device::update(int sid,const uint16_t stats[]) {
         }
       }
     }
+  }
+}
+void Device::update() {
+  for(Operation *oper : opers_) {
+    oper->execute(server_,ip_,"light1","off");
   }
 }
 
