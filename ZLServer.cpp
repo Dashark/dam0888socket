@@ -73,20 +73,14 @@ int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   return ret;
 }
 
-void ZLServer::IOModel::write(modbus_t *ctx) {
+void ZLServer::IOModel::write(modbus_t *ctx,int addr,int state) {
   if(fd_ == -1)
     return ;
-    syslog(LOG_INFO,"开始写了");
-  uint8_t rbuf[]={0,0,0,0,1,1,1,1};
-  // int i = 0;
-  // for(auto& bit : outputs_) {
-  //   bit = buf[i];
-  //   i += 1;
-  // }
-  modbusWrite(ctx,rbuf,8);
+  syslog(LOG_INFO,"id:%d addr:%d  state:%d",slaveID_,addr,state);
+  modbusWrite(ctx,addr,state);
 }
 
-int ZLServer::IOModel::modbusWrite(modbus_t *ctx, uint8_t buf[], int size) {
+int ZLServer::IOModel::modbusWrite(modbus_t *ctx, int addr, int state) {
   assert(ctx != nullptr && fd_ != -1);
   int ret = 0;
   ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
@@ -101,9 +95,10 @@ int ZLServer::IOModel::modbusWrite(modbus_t *ctx, uint8_t buf[], int size) {
     syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
     return ret;
   }
-  ret = modbus_write_bits(ctx, 0, size, buf);
+  //ret = modbus_write_bits(ctx, 0, size, buf);
+  ret=modbus_write_bit(ctx,addr,state);
   if(ret == -1) {
-    syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
+    syslog(LOG_ERR, "modbus_write_bit failed! (%s)", strerror(errno));
     return ret;
   }
   return ret;
@@ -271,10 +266,14 @@ bool ZLServer::readAll() {
   bool ret = false;
   IOModel* mod = (*moditer_);
   if(mod != nullptr) {
+    mod->ctx_=modbus_ctx_;
     ret = mod->read(modbus_ctx_);
-    mod->write(modbus_ctx_);
+
     if(ret)
-      notify(mod->ip_, mod->slaveID_, mod->notifys_);
+      {
+        notify(mod->ip_, mod->slaveID_, mod->notifys_);
+        //writenotify(mod->ip_, mod->slaveID_, mod->writenotify_);
+      }
     ++moditer_;  //point to next model
     usleep(4000);
   }
@@ -291,6 +290,12 @@ bool ZLServer::readAll() {
   return ret;
 }
 
+bool ZLServer::write(const std::string &ip,int id,int addr,int state){
+  IOModel* mod = findIOModel(ip,id);
+  usleep(4000);
+  mod->write(modbus_ctx_,addr,state);
+}
+
 void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
   assert(id > 0);
   IOModel *iom = new ZLServer::IOModel(ip, id, ins, outs);
@@ -301,6 +306,14 @@ void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
 ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip) {
   for(IOModel *io : models_) {
     if(io->equal(ip))
+      return io;
+  }
+  return nullptr;
+}
+
+ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip,int id) {
+  for(IOModel *io : models_) {
+    if(io->equal(ip)&&io->equal(id))
       return io;
   }
   return nullptr;
@@ -323,6 +336,14 @@ void ZLServer::createSmartMeter(const std::string &ip, int id) {
 }
 
 ZLServer::SmartMeter* ZLServer::findSmartMeter(const std::string &ip) {
+  for(SmartMeter *sm : sMeters_) {
+    if(sm->equal(ip))
+      return sm;
+  }
+  return nullptr;
+}
+
+ZLServer::SmartMeter* ZLServer::findSmartMeter(const std::string &ip,int id) {
   for(SmartMeter *sm : sMeters_) {
     if(sm->equal(ip))
       return sm;
