@@ -21,7 +21,7 @@ class IOModel {
   uint16_t *notifys_;
   std::string ip_;
   int fd_;
-
+  modbus_t *ctx_;
  public:
   IOModel(const std::string &ip, int id, int ins, int outs);
   ~IOModel();
@@ -35,11 +35,11 @@ class IOModel {
     return slaveID_ == id ? true : false;
   }
   bool read(modbus_t *ctx);
-  void write(modbus_t *ctx);
+  void write(modbus_t *ctx,int addr,int state);
   bool setFileDesc(int fd);
  private:
   int modbusRead(modbus_t *ctx, uint8_t buf[], int size);
-  int modbusWrite(modbus_t *ctx, uint8_t buf[], int size);
+  int modbusWrite(modbus_t *ctx,int addr,int state);
 };
 
 ////////////////////////////////////这是智能电表的提前声明//////////////////////////////////////////////////////////////////
@@ -82,13 +82,16 @@ class SmartMeter {
   int listenZL();
   int clientConnected();
   bool readAll();
+  bool write(const std::string &ip,int id,int addr,int state);
   void createIOModel(const std::string &ip, int id, int ins, int outs);
   void createSmartMeter(const std::string &ip, int id);
  private:
   IOModel* findIOModel(const std::string &ip);
+  IOModel* findIOModel(const std::string &ip,int id);
   void setIOModel(const std::string &ip, int fd);
 
   SmartMeter* findSmartMeter(const std::string &ip);
+  SmartMeter* findSmartMeter(const std::string &ip,int id);
   void setSmartMeter(const std::string &ip, int fd);
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
