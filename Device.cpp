@@ -9,7 +9,7 @@
 #include "ZLServer.h"
 #include <iostream>
 using json = nlohmann::json;
-Device::Device(const char ip[], const char id[],const char type[]):ip_(ip), id_(id),type_(type) {
+Device::Device(const char ip[], const char id[],const char type[],const char relationship[]):ip_(ip), id_(id),type_(type),relationship_(relationship) {
 
 }
 
@@ -27,10 +27,6 @@ void Device::update(int sid,const uint16_t stats[]) {
            newst=true;
          }
        }
-  }
-  else if(equalType("controllableDevice"))
-  {
-    update();
   }
   else {
     int idx = 0;
@@ -56,11 +52,6 @@ void Device::update(int sid,const uint16_t stats[]) {
         }
       }
     }
-  }
-}
-void Device::update() {
-  for(Operation *oper : opers_) {
-    oper->execute(server_,ip_,"light1","off");
   }
 }
 
@@ -90,7 +81,7 @@ std::string Device::stateStr(Messager *mes) {
     assert(oper != nullptr);
     oper->stateStr(mes);
   }
-
+  mes->setDID(relationship_);
   gchar *time_str = NULL;
   GDateTime *time = NULL;
   time = g_date_time_new_now_local();
@@ -105,7 +96,7 @@ std::string Device::stateStr(Messager *mes) {
 
 std::string Device::stateStrSmartMeter(Messager *mes) {
   mes->setID(id_);
-  mes->setKV("minwei","好男人");
+  mes->setDID(relationship_);
   for(Operation* oper : opers_) {
     assert(oper != nullptr);
     oper->stateStr(mes);
@@ -127,6 +118,25 @@ void Device::clearOpers() {
   for(Operation* oper : opers_)
     delete oper;
   opers_.clear();
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+AGVLight::AGVLight(const char ip[], const char id[],const char type[],const char relationship[]):Device(ip,id,type,relationship) {
+syslog(LOG_INFO,"现在创建可操控设备:%d",id);
+}
+
+AGVLight::~AGVLight() {
+
+}
+void AGVLight::update(int sid,const uint16_t stats[])
+{
+update();
+}
+void AGVLight::update(){
+  syslog(LOG_INFO,"现在调用的是子类的函数哦");
+  for(Operation *oper : opers_) {
+    oper->execute(server_,ip_,"light1","off");
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -161,8 +171,13 @@ std::vector<Device*> DeviceFactory::createDevices() {
       char* ip=(char*)str_ip.c_str();
       std::string str_type=element["type"];
       char* type=(char*)str_type.c_str();
-
-    Device *dev = new Device(ip, id,type);
+      std::string str_relationship=element["relationship"].dump();
+      char* relationship=(char*)str_relationship.c_str();
+    Device *dev;
+    if(strcmp(type,"controllableDevice")==0)
+    dev = new AGVLight(ip, id,type,relationship);
+    else
+    dev = new Device(ip, id,type,relationship);
     Broker *bro = kafDef_->getBroker(id);
     dev->attach(bro);
     Messager *mes = kafDef_->getMessager(id);
