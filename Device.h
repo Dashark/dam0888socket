@@ -9,16 +9,17 @@ class Connection;
 #include "Messager.hpp"
 class ZLServer;
 class Device {
- private:
+protected:
   const std::string ip_;
   const std::string id_;
   const std::string type_;
+  const std::string relationship_;
   std::vector<Operation*> opers_;
   std::vector<Broker*> brokers_;
   std::vector<Messager*> messagers_;
   ZLServer* server_;
  public:
-  Device(const char ip[], const char id[],const char type[]);
+  Device(const char ip[], const char id[],const char type[],const char relationship[]);
   ~Device();
   ////////////////////////////////////////////
   Device* equalIP(const std::string &ip) {
@@ -49,13 +50,26 @@ class Device {
 
   //////////////////////////////////////////////////////
   void update(int sid, const uint16_t stats[]);
-  void update();
+
   std::string stateStr();
   std::string stateStr(Messager *mes);
   std::string stateStrSmartMeter(Messager *mes);
  private:
   void clearOpers();
 };
+///////////////////////////////////////////下面是闪烁灯的创建////////////////////////////////////////////////////////////////////////////////
+
+  class AGVLight:public Device{
+  private:
+
+  public:
+    AGVLight(const char ip[], const char id[],const char type[],const char relationship[]);
+    ~AGVLight();
+    void update(int sid, const uint16_t stats[]);
+    void update();
+  };
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class DeviceFactory {
  private:
