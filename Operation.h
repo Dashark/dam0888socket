@@ -13,9 +13,9 @@ protected:
  const int ioport_;
  const std::string name_;
  const int ioaddr_;
- const std::string deviceid_;
+ const std::string type_;
 public:
- Operation(const char name[], int port, int addr,const char deviceid[]);
+ Operation(const char name[], int port, int addr,const char type[]);
  virtual ~Operation();
  virtual std::string stateStr()=0;
  virtual std::string stateStr(Messager *mes)=0;
@@ -38,7 +38,7 @@ class ReadOperation:public Operation{
  private:
   char state_;
  public:
-  ReadOperation(const char name[],int port, int addr,const char deviceid[]);
+  ReadOperation(const char name[],int port, int addr,const char type[]);
   virtual ~ReadOperation();
   virtual bool execute(char state);
   virtual bool execute(const uint16_t state[]);
@@ -56,7 +56,7 @@ class SmOperation:public Operation{
   const uint16_t *state_;
   int times;
  public:
-  SmOperation(const char name[],int port, int addr,const char deviceid[]);
+  SmOperation(const char name[],int port, int addr,const char type[]);
   virtual ~SmOperation();
   virtual bool execute(const uint16_t state[]);
   virtual bool execute(char state);
@@ -77,7 +77,7 @@ class WriteOperation:public Operation{
   int times_;
   int state_now;
  public:
-  WriteOperation(const char name[],int port, int addr,const char deviceid[]);
+  WriteOperation(const char name[],int port, int addr,const char type[]);
   virtual ~WriteOperation();
   virtual bool execute(const uint16_t state[]);
   virtual bool execute(char state);
@@ -93,7 +93,7 @@ class UpOperation : public ReadOperation {
  private:
 
  public:
-  UpOperation(const char name[], int port, int addr,const char deviceid[]);
+  UpOperation(const char name[], int port, int addr,const char type[]);
   virtual ~UpOperation();
   virtual bool execute(char state);
   virtual bool execute(const uint16_t state[]);
@@ -107,7 +107,7 @@ class OperationDefine {
   ~OperationDefine();
   std::vector<Operation*> create(const json operate, const std::string &type);
  private:
-  Operation* createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]);
+  Operation* createOperation(const char dev_type[], const char name[], int port, int addr,const char op_type[]);
 
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
