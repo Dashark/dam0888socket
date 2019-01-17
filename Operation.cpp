@@ -7,7 +7,7 @@
 #include "ZLServer.h"
 #include <iostream>
 using json = nlohmann::json;
-Operation::Operation(const char name[], int port, int addr,const char deviceid[]):name_(name),ioport_(port), ioaddr_(addr),deviceid_(deviceid) {
+Operation::Operation(const char name[], int port, int addr,const char type[]):name_(name),ioport_(port), ioaddr_(addr),type_(type) {
 }
 
 Operation::~Operation() {
@@ -18,7 +18,7 @@ Operation::~Operation() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-ReadOperation::ReadOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+ReadOperation::ReadOperation(const char name[], int port, int addr,const char type[]):Operation(name,port,addr,type){
 state_ = 0;
 }
 
@@ -45,7 +45,6 @@ std::string ReadOperation::stateStr() {
 
 std::string ReadOperation::stateStr(Messager *mes) {
   mes->setKV(name_, (state_ == 0 ? "OFF" : "ON"));
-  mes->setDID(deviceid_);
   return "";
 }
 
@@ -69,7 +68,7 @@ bool ReadOperation::downSingal(char state) {
   return ret;
 }
 //////////////////////////////////////////////////////////////////////////
-SmOperation::SmOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+SmOperation::SmOperation(const char name[], int port, int addr,const char type[]):Operation(name,port,addr,type){
 state_ = 0;
 times=0;
 }
@@ -114,7 +113,6 @@ std::string SmOperation::stateStr(Messager *mes) {
   //读取总功率
   mes->setKV("ImpEp", readImpEp(state_,22));
 
-  mes->setDID(deviceid_);
   return "";
 }
 
@@ -147,7 +145,7 @@ std::string SmOperation::readImpEp(const uint16_t state[],int startaddr){
   return oss.str();
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-WriteOperation::WriteOperation(const char name[], int port, int addr,const char deviceid[]):Operation(name,port,addr,deviceid){
+WriteOperation::WriteOperation(const char name[], int port, int addr,const char type[]):Operation(name,port,addr,type){
 state_ = 0;
 times_=0;
 state_now=false;
@@ -198,7 +196,7 @@ bool WriteOperation::flashing(int times)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-UpOperation::UpOperation(const char name[], int port, int addr,const char deviceid[]):ReadOperation(name, port, addr,deviceid) {
+UpOperation::UpOperation(const char name[], int port, int addr,const char type[]):ReadOperation(name, port, addr,type) {
 
 }
 
@@ -241,27 +239,27 @@ std::vector<Operation*> OperationDefine::create(const json operate, const std::s
 	    int port=std::stoi(str_port);
       std::string str_addr=element["ioaddr"];
 	    int addr=std::stoi(str_addr);
-      std::string str_devicesid=element["devicesid"].dump();
-	    char* devicesid=(char*)str_devicesid.c_str();
-	    Operation *op = createOperation(type.c_str(), name, port, addr,devicesid);
+      std::string str_type=element["type"];
+	    char* op_type=(char*)str_type.c_str();
+	    Operation *op = createOperation(type.c_str(), name, port, addr,op_type);
 	   ops.push_back(op);
 	 }
   }
   return ops;
 }
 
-Operation* OperationDefine::createOperation(const char type[], const char name[], int port, int addr,const char deviceid[]) {
-  std::string ts(type);
+Operation* OperationDefine::createOperation(const char dev_type[], const char name[], int port, int addr,const char op_type[]) {
+  std::string ts(dev_type);
 
   if(ts == "agv") {
-    return new UpOperation(name, port, addr,deviceid);
+    return new UpOperation(name, port, addr,op_type);
   }
   else if(ts=="electricMeter")
   {
-    return new SmOperation(name, port, addr,deviceid);
+    return new SmOperation(name, port, addr,op_type);
   }
   else if(ts=="controllableDevice"){
-      return new WriteOperation(name, port, addr,deviceid);
+      return new WriteOperation(name, port, addr,op_type);
   }
-  return new ReadOperation(name, port, addr,deviceid);
+  return new ReadOperation(name, port, addr,op_type);
 }
