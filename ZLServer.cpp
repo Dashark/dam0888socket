@@ -29,13 +29,7 @@ ZLServer::IOModel::~IOModel() {
 bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
-    //这里是电表数据的接入点
-    // int newfd=fd_;
-    // ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
-    // em->creatElectricMeter();
-
   uint8_t *buf = new uint8_t[sizeof(notifys_)];
-
   if(modbusRead(ctx, buf, sizeof(notifys_)) <= 0) {
     return false;
   }
@@ -67,6 +61,7 @@ int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   }
   ret = modbus_read_input_bits(ctx, 0, size, buf);
   if(ret == -1) {
+    syslog(LOG_INFO, "IO模块读取失败,请检查接线和配置");
     syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
     return ret;
   }
@@ -98,6 +93,7 @@ int ZLServer::IOModel::modbusWrite(modbus_t *ctx, int addr, int state) {
   //ret = modbus_write_bits(ctx, 0, size, buf);
   ret=modbus_write_bit(ctx,addr,state);
   if(ret == -1) {
+    syslog(LOG_INFO, "IO模块写入失败,请检查接线和配置");
     syslog(LOG_ERR, "modbus_write_bit failed! (%s)", strerror(errno));
     return ret;
   }
@@ -171,6 +167,7 @@ int ZLServer::SmartMeter::modbusRead(modbus_t *ctx, uint16_t buf[], int start_,i
   }
   ret = modbus_read_registers (ctx,start_,size, buf);
   if(ret == -1) {
+    syslog(LOG_INFO, "电表模块读取失败,请检查接线和配置");
     syslog(LOG_ERR, "modbus_read_registers failed! (%s)", strerror(errno));
     return ret;
   }
@@ -262,11 +259,13 @@ int ZLServer::clientConnected() {
 }
 
 bool ZLServer::readAll() {
+    bool ret = false;
+  if(models_.size()<1) return ret;
   moditer_ = moditer_ == models_.end() ? models_.begin() : moditer_;
-  bool ret = false;
   IOModel* mod = (*moditer_);
   if(mod != nullptr) {
     mod->ctx_=modbus_ctx_;
+    usleep(4000);
     ret = mod->read(modbus_ctx_);
 
     if(ret)
@@ -275,17 +274,18 @@ bool ZLServer::readAll() {
         //writenotify(mod->ip_, mod->slaveID_, mod->writenotify_);
       }
     ++moditer_;  //point to next model
-    usleep(4000);
-  }
 
+  }
+  if(sMeters_.size()<1) return ret;
   smteriter_ = smteriter_ == sMeters_.end() ? sMeters_.begin() : smteriter_;
     SmartMeter* sm = (*smteriter_);
   if(sm != nullptr) {
+    usleep(4000);
     ret = sm->read(modbus_ctx_);
     if(ret)
      notify(sm->ip_, sm->slaveID_, sm->notifys_);
     ++smteriter_;  //point to next model
-    usleep(4000);
+
   }
   return ret;
 }
