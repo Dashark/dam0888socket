@@ -22,7 +22,7 @@ void Device::update(int sid,const uint16_t stats[]) {
   if(equalType("electricMeter"))
   {
        for(Operation *oper : opers_) {
-         if(oper->equalPort(sid)) {
+         if(oper->equalPort(sid)&&oper->isRead()) {
            if(oper->execute(stats))
            newst=true;
          }
@@ -32,7 +32,7 @@ void Device::update(int sid,const uint16_t stats[]) {
     int idx = 0;
     for(int i=0;i<sizeof(stats);i++) {
       for(Operation *oper : opers_) {
-        if(oper->equalPort(sid) && oper->equalAddr(idx)) {
+        if(oper->equalPort(sid) && oper->equalAddr(idx)&&oper->isRead()) {
           newst |= oper->execute(stats[i]);
           break; //TODO one state for one operation
         }
@@ -122,7 +122,7 @@ void Device::clearOpers() {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 AGVLight::AGVLight(const char ip[], const char id[],const char type[],const char relationship[]):Device(ip,id,type,relationship) {
-syslog(LOG_INFO,"现在创建可操控设备:%d",id);
+syslog(LOG_INFO,"现在创建可操控设备:%s",id);
 }
 
 AGVLight::~AGVLight() {
@@ -130,10 +130,15 @@ AGVLight::~AGVLight() {
 }
 void AGVLight::update(int sid,const uint16_t stats[])
 {
-update();
+  syslog(LOG_INFO,"现在调用的是按钮灯的函数哦");
+  for(Operation *oper : opers_) {
+    if(oper->equalPort(sid)&&!oper->isRead()) {
+       update();
+    }
+  }
 }
 void AGVLight::update(){
-  syslog(LOG_INFO,"现在调用的是子类的函数哦");
+
   for(Operation *oper : opers_) {
     oper->execute(server_,ip_,"light1","off");
   }
