@@ -31,6 +31,9 @@ public:
  bool equalName(const std::string name) const {
    return name_ == name ? true : false;
  }
+ bool isRead() const {
+   return type_.compare("read")==0;
+ }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
