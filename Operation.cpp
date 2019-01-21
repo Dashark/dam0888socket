@@ -1,5 +1,7 @@
 #include "Operation.h"
 #include <string>
+#include <glib.h>
+#include <glib/gprintf.h>
 #include <syslog.h>
 #include <sstream>
 #include <modbus.h>
@@ -162,38 +164,80 @@ bool WriteOperation::execute(char state) {
 }
 bool WriteOperation::execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state)
 {
+   devip=ip;
+   server_=server;
    if(name.compare(name))return false;
    else{
-    if(flashing(2))
-    server->write(ip,ioport_,ioaddr_,state_now);
+  //  if(flashing(2))
+  //  server->write(ip,ioport_,ioaddr_,state_now);
    }
 }
 
 std::string WriteOperation::stateStr() {
-  std::string all = "\"" + name_ + "\":\"" + (state_ == 0 ? "OFF" : "ON") + "\"";
-  return all;
 }
 
 std::string WriteOperation::stateStr(Messager *mes) {
-
-  return "";
 }
  int WriteOperation::OpenOrOff(std::string state){
    syslog(LOG_INFO,"The device:%s has been %s",name_.c_str(),state.c_str());
   (state=="on")?state_now=1:state_now=0;
+  server_->write(devip,ioport_,ioaddr_,state_now);
  }
 
-bool WriteOperation::flashing(int times)
+bool WriteOperation::change()
 {
-  if(times_<times)
-  {
-    times_++;
-    return false;
-  }
-  times_=0;
   (state_now==1)?OpenOrOff("off"):OpenOrOff("on");
-  return true;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+OnWOperation::OnWOperation(const char name[], int port, int addr,const char type[]):WriteOperation(name,port,addr,type){
+  syslog(LOG_INFO,"The lighton has been created");
+}
+OnWOperation::~OnWOperation(){}
+bool OnWOperation::execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state){
+  OpenOrOff("on");
+}
+///////////////////////////////////////////////////////关////////////////////////////////////////////////////////////////////
+OffWOperation::OffWOperation(const char name[], int port, int addr,const char type[]):WriteOperation(name,port,addr,type){
+  syslog(LOG_INFO,"The lightoff has been created");
+}
+OffWOperation::~OffWOperation(){}
+bool OffWOperation::execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state){
+  OpenOrOff("off");
+}
+//////////////////////////////////////////////////闪烁////////////////////////////////////////////////////////////////////
+FlashingWOperation::FlashingWOperation(const char name[], int port, int addr,const char type[]):WriteOperation(name,port,addr,type){
+  syslog(LOG_INFO,"The flashing has been created");
+  flashing_type=false;
+  state_ = 0;
+  times_=0;
+  state_now=false;
+}
+FlashingWOperation::~FlashingWOperation(){
+}
+bool FlashingWOperation::execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state){
+  server_=server;
+  devip=ip;
+  flashing_type=true;
+  startFlashing(3);//闪烁的频率
+}
+
+void FlashingWOperation::startFlashing(int times){
+  if(times_>times)
+  {
+    change();
+    times_=0;
+    return ;
+  }
+    times_++;
+}
+
+
+void FlashingWOperation::stopFlashing(){
+//  thread_type=false;
+//  times_=0;
+}
+
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UpOperation::UpOperation(const char name[], int port, int addr,const char type[]):ReadOperation(name, port, addr,type) {
@@ -259,6 +303,13 @@ Operation* OperationDefine::createOperation(const char dev_type[], const char na
     return new SmOperation(name, port, addr,op_type);
   }
   else if(ts=="controllableDevice"){
+      std::string ne(name);
+      if(ne=="lighton")
+      return new OnWOperation(name, port, addr,op_type);
+      if(ne=="lightoff")
+      return new OffWOperation(name, port, addr,op_type);
+      if(ne=="lightflashing")
+      return new FlashingWOperation(name, port, addr,op_type);
       return new WriteOperation(name, port, addr,op_type);
   }
   return new ReadOperation(name, port, addr,op_type);
