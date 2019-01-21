@@ -9,7 +9,6 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include "json.hpp"
-#include "ElectricMeter.h"
 #include "Device.h"
 using json = nlohmann::json;
 #define NB_CONNECTION  5 //listen()函数等待连接队列的最大长度
@@ -412,7 +411,7 @@ void ZLDefine::addSmartMeters(ZLServer *server) {
     {
     std::string str_port=ele["ioport"];
     int id=std::stoi(str_port);
-    syslog(LOG_INFO,"电表在此处创建id:%d",id);
+    //syslog(LOG_INFO,"电表在此处创建id:%d",id);
     server->createSmartMeter(sip,id);
     }
   }
