@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <cassert>
+#include <sys/time.h>
 #include "json.hpp"
 #include "ZLServer.h"
 #include <iostream>
@@ -18,17 +19,8 @@ Device::~Device() {
 }
 
 void Device::update(int sid,const uint16_t stats[]) {
+  if(equalType("controllableDevice")) syslog(LOG_INFO,"是按钮灯的函数哦%d",sid);
   bool newst = false;
-  if(equalType("electricMeter"))
-  {
-       for(Operation *oper : opers_) {
-         if(oper->equalPort(sid)&&oper->isRead()) {
-           if(oper->execute(stats))
-           newst=true;
-         }
-       }
-  }
-  else {
     int idx = 0;
     for(int i=0;i<sizeof(stats);i++) {
       for(Operation *oper : opers_) {
@@ -39,8 +31,6 @@ void Device::update(int sid,const uint16_t stats[]) {
       }
       idx += 1;
     }
-  }
-
   if(newst) {
     for(Messager *mes : messagers_) {
       if(mes != nullptr) {
@@ -130,18 +120,42 @@ AGVLight::~AGVLight() {
 }
 void AGVLight::update(int sid,const uint16_t stats[])
 {
-  syslog(LOG_INFO,"现在调用的是按钮灯的函数哦");
+//  syslog(LOG_INFO,"现在调用的是按钮灯的函数哦%d",sid);
   for(Operation *oper : opers_) {
-    if(oper->equalPort(sid)&&!oper->isRead()) {
-       update();
+    if(oper->equalName("lightflashing")) {
+        oper->execute(server_,ip_,"light1","off");
     }
   }
 }
-void AGVLight::update(){
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+SmartMeter::SmartMeter(const char ip[], const char id[],const char type[],const char relationship[]):Device(ip,id,type,relationship) {
+syslog(LOG_INFO,"现在创建电表设备:%s",id);
+}
+SmartMeter::~SmartMeter(){
 
+}
+void SmartMeter::update(int sid,const uint16_t stats[])
+{
+  //syslog(LOG_INFO,"现在调用的是电表的函数哦%d",sid);
+  bool newst = false;
   for(Operation *oper : opers_) {
-    oper->execute(server_,ip_,"light1","off");
-  }
+    if(oper->equalPort(sid)&&oper->isRead()) {
+      if(oper->execute(stats))
+        newst=true;
+         }
+    }
+    if(newst) {
+      for(Messager *mes : messagers_) {
+        if(mes != nullptr) {
+          stateStr(mes);
+          for(Broker *bk : brokers_) {
+            if(bk != nullptr) {
+              mes->send(bk);
+            }
+          }
+        }
+      }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -181,6 +195,8 @@ std::vector<Device*> DeviceFactory::createDevices() {
     Device *dev;
     if(strcmp(type,"controllableDevice")==0)
     dev = new AGVLight(ip, id,type,relationship);
+    else if(strcmp(type,"electricMeter")==0)
+     dev = new SmartMeter(ip, id,type,relationship);
     else
     dev = new Device(ip, id,type,relationship);
     Broker *bro = kafDef_->getBroker(id);
