@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <glib.h>
+#include <syslog.h>
 #include "Messager.hpp"
 #include "json.hpp"
 class ZLServer;
@@ -75,10 +76,12 @@ class SmOperation:public Operation{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class WriteOperation:public Operation{
- private:
+protected:
   const uint16_t *state_;
   int times_;
   int state_now;
+  std::string devip;
+  ZLServer* server_;
  public:
   WriteOperation(const char name[],int port, int addr,const char type[]);
   virtual ~WriteOperation();
@@ -89,8 +92,40 @@ class WriteOperation:public Operation{
   virtual std::string stateStr(Messager *mes);
  protected:
    int OpenOrOff(std::string state);
-   bool flashing(int times);
+   bool change();
 };
+//////////////////////////////////////////开始开的opration//////////////////////////////////////////////////////////////////////////////
+class OnWOperation:public WriteOperation{
+private:
+public:
+  OnWOperation(const char name[],int port, int addr,const char type[]);
+  virtual ~OnWOperation();
+  virtual bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state);
+};
+
+///////////////////////////////////////////开始关的opration/////////////////////////////////////////////////////////////////////////////
+class OffWOperation:public WriteOperation{
+private:
+public:
+  OffWOperation(const char name[],int port, int addr,const char type[]);
+  virtual ~OffWOperation();
+  virtual bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state);
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class FlashingWOperation:public WriteOperation{
+private:
+  bool flashing_type;
+  //bool thread_type;
+public:
+  FlashingWOperation(const char name[],int port, int addr,const char type[]);
+  virtual ~FlashingWOperation();
+  virtual bool execute(ZLServer* server,const std::string &ip,const std::string &name,const std::string &state);
+  void startFlashing(int times); ///这是毫秒
+  virtual void stopFlashing();
+  // static gpointer thread_flashing (gpointer data);
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class UpOperation : public ReadOperation {
  private:
