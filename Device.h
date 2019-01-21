@@ -49,7 +49,7 @@ protected:
   }
 
   //////////////////////////////////////////////////////
-  void update(int sid, const uint16_t stats[]);
+  virtual void update(int sid, const uint16_t stats[]);
 
   std::string stateStr();
   std::string stateStr(Messager *mes);
@@ -65,10 +65,18 @@ protected:
   public:
     AGVLight(const char ip[], const char id[],const char type[],const char relationship[]);
     ~AGVLight();
-    void update(int sid, const uint16_t stats[]);
-    void update();
+    virtual void update(int sid, const uint16_t stats[]);
   };
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class SmartMeter:public Device{
+private:
+public:
+  SmartMeter(const char ip[], const char id[],const char type[],const char relationship[]);
+  ~SmartMeter();
+  virtual void update(int sid, const uint16_t stats[]);
+};
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class DeviceFactory {
