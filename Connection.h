@@ -8,12 +8,12 @@
 class Connection {
  private:
   std::vector<Device*> devices_;
+  int times;
  public:
   Connection();
   void attach(Device *device);
   void detach(Device *device);
-  void notify(const std::string &ip, int id,
-              const std::vector<char> &buf);
+  void notify(const std::string &ip, int id,const uint16_t buf[]);
 };
 
 #endif

@@ -9,12 +9,13 @@
 #include <sstream>
 #include <arpa/inet.h>
 #include "json.hpp"
-#include "ElectricMeter.h"
+#include "Device.h"
 using json = nlohmann::json;
 #define NB_CONNECTION  5 //listen()函数等待连接队列的最大长度
-
+///////////////////////////////////////这一部分是io模块的server方法/////////////////////////////////////////////////////////////
 ZLServer::IOModel::IOModel(const std::string &ip, int id, int ins, int outs): slaveID_(id), inputs_(ins), outputs_(outs) {
 
+  notifys_=new uint16_t[ins];
   assert(slaveID_ > 0);
   ip_ = ip;
   fd_ = -1;
@@ -27,24 +28,16 @@ ZLServer::IOModel::~IOModel() {
 bool ZLServer::IOModel::read(modbus_t *ctx) {
   if(fd_ == -1)
     return false;
-    //这里是电表数据的接入点
-    int newfd=fd_;
-    ElectricMeter *em=new ElectricMeter(9,newfd,ctx);
-    em->creatElectricMeter();
-
-  uint8_t *buf = new uint8_t[inputs_.size()];
-  if(modbusRead(ctx, buf, inputs_.size()) <= 0) {
+  uint8_t *buf = new uint8_t[sizeof(notifys_)];
+  if(modbusRead(ctx, buf, sizeof(notifys_)) <= 0) {
     return false;
   }
-
-  int i = 0;
   bool ret = false;
-  for(auto& bit : inputs_) {
-    if(bit != buf[i]) {
-      bit = buf[i];
+  for(int i=0;i<sizeof(notifys_);i++) {
+    if(notifys_[i] != buf[i]) {
+      notifys_[i] = buf[i];
       ret = true;
     }
-    i += 1;
   }
   delete[] buf;
   return ret;
@@ -67,31 +60,125 @@ int ZLServer::IOModel::modbusRead(modbus_t *ctx, uint8_t buf[], int size) {
   }
   ret = modbus_read_input_bits(ctx, 0, size, buf);
   if(ret == -1) {
+    syslog(LOG_INFO, "IO模块读取失败,请检查接线和配置");
     syslog(LOG_ERR, "modbus_read_input_bits failed! (%s)", strerror(errno));
     return ret;
   }
   return ret;
 }
 
-void ZLServer::IOModel::write(modbus_t *ctx) {
-  /*int i = 0;
-  for(auto& bit : outputs_) {
-    bit = buf[i];
-    i += 1;
-  }
-  */
+void ZLServer::IOModel::write(modbus_t *ctx,int addr,int state) {
+  if(fd_ == -1)
+    return ;
+  syslog(LOG_INFO,"id:%d addr:%d  state:%d",slaveID_,addr,state);
+  modbusWrite(ctx,addr,state);
 }
 
-bool ZLServer::IOModel::modbusWrite(modbus_t *ctx, char buf[], int size) {
-  return false;
+int ZLServer::IOModel::modbusWrite(modbus_t *ctx, int addr, int state) {
+  assert(ctx != nullptr && fd_ != -1);
+  int ret = 0;
+  ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_socket failed! (%s)", strerror(errno));
+    return ret;
+  }
+
+  ret = modbus_set_slave(ctx, slaveID_);
+  //printf("%d\n", slaveID_);
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
+    return ret;
+  }
+  //ret = modbus_write_bits(ctx, 0, size, buf);
+  ret=modbus_write_bit(ctx,addr,state);
+  if(ret == -1) {
+    syslog(LOG_INFO, "IO模块写入失败,请检查接线和配置");
+    syslog(LOG_ERR, "modbus_write_bit failed! (%s)", strerror(errno));
+    return ret;
+  }
+  return ret;
 }
 
 bool ZLServer::IOModel::setFileDesc(int fd) {
   fd_ = fd;
   return true;
 }
+////////////////////////////智能电表的server模块/////////////////////////////////////////////////////////////////////////////
+ZLServer::SmartMeter::SmartMeter(const std::string &ip, int id): slaveID_(id) {
 
-///////////////////////////ZLServer Implement//////////////////////////////////////////////////////
+  assert(slaveID_ > 0);
+  ip_ = ip;
+  fd_ = -1;
+  parameter_= new uint16_t[2];
+  electricityData_= new uint16_t[20];
+  energyData_= new uint16_t[2];
+  notifys_=new uint16_t[24];
+}
+
+ZLServer::SmartMeter::~SmartMeter() {
+
+}
+
+bool ZLServer::SmartMeter::read(modbus_t *ctx) {
+  if(fd_ == -1)
+    return false;
+  uint16_t *buf1 = new uint16_t[2];
+  if(modbusRead(ctx,buf1,0x06,2) > 0){
+    for(int i=0;i<2;i++) notifys_[i]=buf1[i];delete[] buf1;buf1=NULL;
+  }
+  else return false;
+  uint16_t *buf2 = new uint16_t[20];
+  if(modbusRead(ctx, buf2,0x2006, 20) > 0) {
+  for(int i=0;i<20;i++) notifys_[i+2]=buf2[i];delete[] buf2;buf2=NULL;
+  }
+  else return false;
+  uint16_t *buf3 = new uint16_t[2];
+  if(modbusRead(ctx, buf3, 0x401E, 2) > 0) {
+    for(int i=0;i<2;i++) notifys_[i+22]=buf3[i];delete[] buf3;buf3=NULL;
+  }
+  else return false;
+  if(modbusRead(ctx,parameter_,0x06,2) <= 0) {
+    return false;
+  }
+  //uint16_t *buf2 = new uint16_t[20];
+  if(modbusRead(ctx, electricityData_,0x2006, 20) <= 0) {
+    return false;
+  }
+  //uint16_t *buf3 = new uint16_t[2];
+  if(modbusRead(ctx, energyData_, 0x401E, 2) <= 0) {
+    return false;
+  }
+  return true;
+}
+
+int ZLServer::SmartMeter::modbusRead(modbus_t *ctx, uint16_t buf[], int start_,int size) {
+  assert(ctx != nullptr && fd_ != -1);
+  int ret = 0;
+  ret = modbus_set_socket(ctx, fd_); //设置modbus的文件描述编号
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_socket failed! (%s)", strerror(errno));
+    return ret;
+  }
+  ret = modbus_set_slave(ctx, slaveID_);
+  if(ret == -1) {
+    syslog(LOG_ERR, "modbus_set_slave failed! (%s)", strerror(errno));
+    return ret;
+  }
+  ret = modbus_read_registers (ctx,start_,size, buf);
+  if(ret == -1) {
+    syslog(LOG_INFO, "电表模块读取失败,请检查接线和配置");
+    syslog(LOG_ERR, "modbus_read_registers failed! (%s)", strerror(errno));
+    return ret;
+  }
+  return ret;
+}
+
+bool ZLServer::SmartMeter::setFileDesc(int fd) {
+  fd_ = fd;
+  return true;
+}
+
+///////////////////////////ZLServer Implement/////////////////////////////////////////////////////////////////////////////
 ZLServer::ZLServer(int port):port_(port) {
   assert(port_ > 1024);
 	modbus_ctx_ = modbus_new_rtu ("/dev/ttyUSB0", 9600, 'N', 8, 1); //波特率9600,比特位8，校验位1，无等价位
@@ -147,6 +234,7 @@ int ZLServer::listenZL() {
 		return socket_fd_;
 	}
   moditer_ = models_.end();
+  smteriter_=sMeters_.end();
   return socket_fd_;
 }
 
@@ -163,26 +251,48 @@ int ZLServer::clientConnected() {
 		syslog (LOG_INFO, "fd = %d, New connection from %s:%d on socket %d\n",
 				socket_fd_, ip, client->sin_port, newfd);
     setIOModel(ip, newfd);
+    setSmartMeter(ip, newfd);
   }
   delete client;
   return newfd;
 }
 
 bool ZLServer::readAll() {
+    bool ret = false;
+  if(models_.size()<1) return ret;
   moditer_ = moditer_ == models_.end() ? models_.begin() : moditer_;
-  bool ret = false;
   IOModel* mod = (*moditer_);
   if(mod != nullptr) {
+    mod->ctx_=modbus_ctx_;
+    usleep(4000);
     ret = mod->read(modbus_ctx_);
+
     if(ret)
-      notify(mod->ip_, mod->slaveID_, mod->inputs_);
+      {
+        notify(mod->ip_, mod->slaveID_, mod->notifys_);
+        //writenotify(mod->ip_, mod->slaveID_, mod->writenotify_);
+      }
     ++moditer_;  //point to next model
 
-    //下面是执行电表的方法
+  }
+  if(sMeters_.size()<1) return ret;
+  smteriter_ = smteriter_ == sMeters_.end() ? sMeters_.begin() : smteriter_;
+    SmartMeter* sm = (*smteriter_);
+  if(sm != nullptr) {
+    usleep(4000);
+    ret = sm->read(modbus_ctx_);
+    if(ret)
+     notify(sm->ip_, sm->slaveID_, sm->notifys_);
+    ++smteriter_;  //point to next model
 
   }
-
   return ret;
+}
+
+bool ZLServer::write(const std::string &ip,int id,int addr,int state){
+  IOModel* mod = findIOModel(ip,id);
+  usleep(4000);
+  mod->write(modbus_ctx_,addr,state);
 }
 
 void ZLServer::createIOModel(const std::string &ip, int id, int ins, int outs) {
@@ -200,6 +310,14 @@ ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip) {
   return nullptr;
 }
 
+ZLServer::IOModel* ZLServer::findIOModel(const std::string &ip,int id) {
+  for(IOModel *io : models_) {
+    if(io->equal(ip)&&io->equal(id))
+      return io;
+  }
+  return nullptr;
+}
+
 void ZLServer::setIOModel(const std::string &ip, int fd) {
   for(IOModel *iom : models_) {
     if(iom->equal(ip)) {
@@ -208,6 +326,39 @@ void ZLServer::setIOModel(const std::string &ip, int fd) {
   }
   //modbus_set_socket(modbus_ctx_, fd);
 }
+
+void ZLServer::createSmartMeter(const std::string &ip, int id) {
+  assert(id > 0);
+  SmartMeter *sm = new ZLServer::SmartMeter(ip, id);
+  sMeters_.push_back(sm);
+  smteriter_=sMeters_.begin();
+}
+
+ZLServer::SmartMeter* ZLServer::findSmartMeter(const std::string &ip) {
+  for(SmartMeter *sm : sMeters_) {
+    if(sm->equal(ip))
+      return sm;
+  }
+  return nullptr;
+}
+
+ZLServer::SmartMeter* ZLServer::findSmartMeter(const std::string &ip,int id) {
+  for(SmartMeter *sm : sMeters_) {
+    if(sm->equal(ip))
+      return sm;
+  }
+  return nullptr;
+}
+
+void ZLServer::setSmartMeter(const std::string &ip, int fd) {
+  for(SmartMeter *sm : sMeters_) {
+    if(sm->equal(ip)) {
+      sm->setFileDesc(fd);
+    }
+  }
+  //modbus_set_socket(modbus_ctx_, fd);
+}
+
 
 ////////////////////////////////////////////////////////////////
 ZLDefine::ZLDefine() {
@@ -232,6 +383,7 @@ ZLServer* ZLDefine::createServer() {
   }
   ZLServer *server = new ZLServer(port);
   addIOModels(server);
+  addSmartMeters(server);
   return server;
 }
 
@@ -246,4 +398,22 @@ void ZLDefine::addIOModels(ZLServer *server) {
   for(int i = 0; i < mods; i++) {
     server->createIOModel(sip.c_str(), i+1, ins, outs);
   }
+}
+
+void ZLDefine::addSmartMeters(ZLServer *server) {
+  std::string sip=js_["zlmcu"]["ip"];
+  for (auto& element : js_["devices"]){
+  std::string str_type=element["type"];
+  char* type=(char*)str_type.c_str();
+  if(strcmp(type,"electricMeter")==0)
+  {
+    for(auto& ele :element["operate"])
+    {
+    std::string str_port=ele["ioport"];
+    int id=std::stoi(str_port);
+    //syslog(LOG_INFO,"电表在此处创建id:%d",id);
+    server->createSmartMeter(sip,id);
+    }
+  }
+}
 }

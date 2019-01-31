@@ -32,7 +32,7 @@ static void close_sigint (int dummy)
 {
   syslog (LOG_INFO, "Ctrl+c 终止进程...\n");
 
-	g_main_loop_quit (loop); //Stops a GMainLoop from running. 
+	g_main_loop_quit (loop); //Stops a GMainLoop from running.
 }
 
 int main(int argc, char *argv[]) {
@@ -58,10 +58,11 @@ int main(int argc, char *argv[]) {
   state->zls = zld.createServer();
   for(Device *dev : devs) {
     state->zls->attach(dev);
+    dev->setServer(state->zls);
   }
   int fd = state->zls->listenZL();
   if(fd == -1) return -1;
-	loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.  
+	loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.
   assert(loop != NULL);
   listenChannel(state, fd, (GIOFunc)socket_connecting);
   g_timeout_add(g_ascii_strtoull(argv[1], NULL, 10),
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
 
 	g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
 
-	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
+	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one.
   delete state->zls;
   delete state;
   return 0;
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
 /*-----------------------------------------
  * add callback into GLib Main Event Loop.
 -----------------------------------------*/
-void listenChannel (ApplicationState *state, int fd, GIOFunc func) 
+void listenChannel (ApplicationState *state, int fd, GIOFunc func)
 {
 	GIOChannel *channel;
 
@@ -92,12 +93,12 @@ void listenChannel (ApplicationState *state, int fd, GIOFunc func)
 /*-------------------------------------
  * callback method for socket accept.
 -------------------------------------*/
-gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointer *p) 
+gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointer *p)
 {
 	/* A client is asking a new connection */
 	int newfd = -1;
 
-	syslog (LOG_INFO, "socket_connecting... \n"); 
+	syslog (LOG_INFO, "socket_connecting... \n");
   ApplicationState *state = (ApplicationState*)p;
 	/* Handle new connections */
 
@@ -116,7 +117,7 @@ gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointe
 /*-----------------------------------------
  * callback method for socket accept.
 -----------------------------------------*/
-gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state) 
+gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state)
 {
 	syslog (LOG_INFO, "socket_communite func !!!\n");
 
