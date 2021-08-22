@@ -1,13 +1,13 @@
 #CXX=clang++
 CXXFLAGS=-g -std=c++11 -Wall -pedantic
-PROG    = dam0888Socket
+PROG    = H3CSocket
 SRC			= $(wildcard *.cpp)
 OBJS		= $(SRC:%.cpp=%.o)
 
-PKGS    = glib-2.0 libmodbus
+PKGS    = glib-2.0
 CFLAGS += $(shell pkg-config --cflags $(PKGS))
 LDLIBS += $(shell pkg-config --libs $(PKGS))
-LDLIBS += -lrdkafka++ -lz -lpthread -lm -ldl
+LDLIBS += -lz -lpthread -lm -ldl
 
 
 all: $(OBJS)
