@@ -20,16 +20,18 @@ class ClientModel {
   ClientModel(const std::string &ip, int id);
   ~ClientModel();
   bool equal(const std::string &ip) const {
-    return ip_ == ip ? true : false;
+    // return ip_ == ip ? true : false;
+    return true;
   }
   /*bool equal(int fd) const {
     return fd_ == fd ? true : false;
     }*/
   bool equal(int id) const {
-    return slaveID_ == id ? true : false;
+    // return slaveID_ == id ? true : false;
+    return true;
   }
 
-  void write(const std::string &info);
+  void writeInfo(const std::string &info);
   bool setFileDesc(int fd);
 
 };
@@ -46,15 +48,19 @@ class ClientModel {
   int listenH3C();
   int clientConnected();
   //bool readAll();  //TODO it's callback func
+  bool write(const std::string &info);
   void createClientModel(const std::string &ip, int id);
+  void setClientModel(const std::string &ip, int fd);
  private:
   ClientModel* findClientModel(const std::string &ip);
-  void setClientModel(const std::string &ip, int fd);
+
 };
 
 class H3CDefine {
  private:
   json js_;
+  void initH3C(H3CServer *server);
+  void alarmH3C(int id);
  public:
   H3CDefine();
   ~H3CDefine();

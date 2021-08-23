@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   listenChannel(state, fd, (GIOFunc)socket_connecting);
 
 	g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
-
+  syslog(LOG_INFO, "LOOP quit!!!");
 	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
   delete state->h3cs;
   delete state;
@@ -108,6 +108,8 @@ gboolean socket_communite (GIOChannel *channel, GIOCondition condition, Applicat
 {
 	syslog (LOG_INFO, "socket_communite func !!!\n");
 
+  state->h3cs->setClientModel("192", -1);
+  g_io_channel_shutdown(channel, TRUE, NULL);
 #if DEBUG
 	int flags = fcntl (fd, F_GETFD);
 	if ((flags & O_NONBLOCK) == O_NONBLOCK) {

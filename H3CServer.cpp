@@ -5,9 +5,10 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <string>
-#include <cstring>
+
 #include <sstream>
 #include <arpa/inet.h>
+#include <stdio.h>
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -24,13 +25,8 @@ H3CServer::ClientModel::~ClientModel() {
 
 }
 
-void H3CServer::ClientModel::write(const std::string &info) {
-  /*int i = 0;
-  for(auto& bit : outputs_) {
-    bit = buf[i];
-    i += 1;
-  }
-  */
+void H3CServer::ClientModel::writeInfo(const std::string &info) {
+  ::write(fd_, info.c_str(), info.size());
 }
 
 bool H3CServer::ClientModel::setFileDesc(int fd) {
@@ -120,7 +116,38 @@ void H3CServer::setClientModel(const std::string &ip, int fd) {
   }
 }
 
+bool H3CServer::write(const std::string &info) {
+  H3CServer::ClientModel *cm = findClientModel("192");
+  cm->writeInfo(info);
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////
+#include "idm_netsdk.h"
+VOID CALLBACK IDM_DEV_Message_Callback (
+                                          LONG    lUserID,
+                                          ULONG   ulCommand,
+                                          VOID    *pBuffer,
+                                          ULONG   ulBufferSize,
+                                          IDM_DEV_ALARM_DEVICE_INFO_S *pstAlarmDeviceInfo,
+                                          VOID    *pUserData
+                                          )
+{
+  printf("CAllBack Triggered\n");
+  H3CServer *server = static_cast<H3CServer*>(pUserData);
+  IDM_DEV_ALARM_EVENT_S *pinfo = (IDM_DEV_ALARM_EVENT_S *)pBuffer;
+  std::string jstr;
+  if ((0 != pinfo->stEvent.ulBufferSize) && (nullptr != pinfo->stEvent.pBuffer)) {
+    json j = json::parse(pinfo->stEvent.pBuffer);
+    j["userId"] = lUserID;
+    //jstr = 
+    //j["Info"] = jstr;
+		printf("Json: \n%s\n",j.dump().c_str());
+    server->write(j.dump());
+  }
+
+}
+
 H3CDefine::H3CDefine() {
   std::ifstream i("config.json");
     i >> js_;
@@ -130,11 +157,46 @@ H3CDefine::~H3CDefine() {
 }
 
 //TODO  init H3C cameras
+void H3CDefine::initH3C(H3CServer *server) {
+  IDM_DEV_Init();
+  IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
+
+  char loginfo[256];
+  int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
+  snprintf(loginfo, 256, "IDM_DEV_SetAlarmCallback ret %d", ret);
+  syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
+}
+void H3CDefine::alarmH3C(int id) {
+	IDM_DEV_USER_LOGIN_INFO_S loginInfo = {0};
+  IDM_DEV_DEVICE_INFO_S devInfo;
+  std::string ip = js_["h3cameras"][id]["ip"];
+  sprintf(loginInfo.szDeviceIP, "%s", ip.c_str());
+  std::string user = js_["h3cameras"][id]["user"];
+  sprintf(loginInfo.szUsername, "%s", user.c_str());
+  std::string pass = js_["h3cameras"][id]["password"];
+  sprintf(loginInfo.szPassword, "%s", pass.c_str());
+  std::string port = js_["h3cameras"][id]["port"];
+  loginInfo.usPort = std::stoi(port);
+
+  int ret = IDM_DEV_Login(loginInfo, &devInfo, &id);
+  syslog(LOG_INFO, "IDM_DEV_Login ret %d", ret);
+  std::string sub = "{\"channel_no_list\":[65535],\"event_types\":[0],\"event_levels\":[2]}";
+  IDM_DEV_ALARM_PARAM_S stAlarmParam = {0};
+  LONG lAlarmHandle = 0;
+  stAlarmParam.ulLevel = 0;
+  stAlarmParam.pcSubscribes = const_cast<char *>(sub.c_str());
+  stAlarmParam.ulSubscribesLen = sub.length();
+  stAlarmParam.ucType = 0;
+  stAlarmParam.ucLinkMode = 0;// 0xFF;
+  ret = IDM_DEV_StartAlarmUp(id, stAlarmParam, &lAlarmHandle);
+  syslog(LOG_INFO, "IDM_DEV_StartAlarmUp ret %d", ret);
+}
 H3CServer* H3CDefine::createServer() {
   if(js_["client"]==""){
    syslog(LOG_CRIT, "failed to load configuration of zlmcu. Process can't run!!!");
     return nullptr;
    }
+
   std::string str_port=js_["port"];
   int port=std::stoi(str_port);
    if(js_["port"]==""){
@@ -143,6 +205,14 @@ H3CServer* H3CDefine::createServer() {
   }
   H3CServer *server = new H3CServer(port);
   addClientModels(server);
+
+  initH3C(server);
+  int id = 0;
+  for (auto& cam : js_["h3cameras"]) {
+    (void)cam;
+    alarmH3C(id);
+    id += 1;
+  }
   return server;
 }
 

@@ -7,11 +7,11 @@ OBJS		= $(SRC:%.cpp=%.o)
 PKGS    = glib-2.0
 CFLAGS += $(shell pkg-config --cflags $(PKGS))
 LDLIBS += $(shell pkg-config --libs $(PKGS))
-LDLIBS += -lz -lpthread -lm -ldl
+LDLIBS += -lz -lpthread -lm -ldl -lidm_netsdk
 
 
 all: $(OBJS)
-	$(CXX) $(CFLAGS) -o $(PROG) $^ $(LDLIBS)
+	$(CXX) $(CFLAGS) -o $(PROG) $^ -Llib/ $(LDLIBS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CFLAGS) -c $<
