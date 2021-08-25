@@ -133,7 +133,7 @@ VOID CALLBACK IDM_DEV_Message_Callback (
                                           VOID    *pUserData
                                           )
 {
-  printf("CAllBack Triggered\n");
+  //printf("CAllBack Triggered\n");
   H3CServer *server = static_cast<H3CServer*>(pUserData);
   IDM_DEV_ALARM_EVENT_S *pinfo = (IDM_DEV_ALARM_EVENT_S *)pBuffer;
   std::string jstr;
@@ -142,7 +142,7 @@ VOID CALLBACK IDM_DEV_Message_Callback (
     j["userId"] = lUserID;
     //jstr = 
     //j["Info"] = jstr;
-		printf("Json: \n%s\n",j.dump().c_str());
+    //printf("Json: \n%s\n",j.dump().c_str());
     server->write(j.dump());
   }
 
