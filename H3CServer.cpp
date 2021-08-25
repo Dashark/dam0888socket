@@ -148,6 +148,21 @@ VOID CALLBACK IDM_DEV_Message_Callback (
 
 }
 
+VOID CALLBACK IDM_DEV_Exception_Callback(
+    LONG lUserID,
+    LONG lHandle,
+    ULONG ulType,
+    VOID *pUserData) {
+
+  syslog(LOG_INFO, "IDM_DEV_Exception_Callback userID %d", lUserID);
+  syslog(LOG_INFO, "IDM_DEV_Exception_Callback Handle %d", lHandle);
+  syslog(LOG_INFO, "IDM_DEV_Exception_Callback Type %d", ulType);
+  if (0 == ulType) {
+    syslog(LOG_INFO, "Keep alive error %d", lUserID);
+    IDM_DEV_Logout(lUserID);
+  }
+}
+
 H3CDefine::H3CDefine() {
   std::ifstream i("config.json");
     i >> js_;
@@ -161,13 +176,13 @@ void H3CDefine::initH3C(H3CServer *server) {
   IDM_DEV_Init();
   IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
 
-  char loginfo[256];
   int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
-  snprintf(loginfo, 256, "IDM_DEV_SetAlarmCallback ret %d", ret);
   syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
+  ret = IDM_DEV_SetExceptionCallback(IDM_DEV_Exception_Callback, (void *)0);
+  syslog(LOG_INFO, "IDM_DEV_SetExceptionCallback ret %d", ret);
 }
 void H3CDefine::alarmH3C(int id) {
-	IDM_DEV_USER_LOGIN_INFO_S loginInfo = {0};
+  IDM_DEV_USER_LOGIN_INFO_S loginInfo = {0};
   IDM_DEV_DEVICE_INFO_S devInfo;
   std::string ip = js_["h3cameras"][id]["ip"];
   sprintf(loginInfo.szDeviceIP, "%s", ip.c_str());
