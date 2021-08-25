@@ -174,7 +174,7 @@ H3CDefine::~H3CDefine() {
 //TODO  init H3C cameras
 void H3CDefine::initH3C(H3CServer *server) {
   IDM_DEV_Init();
-  IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
+  // IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
 
   int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
   syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
