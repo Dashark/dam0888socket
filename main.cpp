@@ -106,17 +106,27 @@ gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointe
 -----------------------------------------*/
 gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state) 
 {
-	syslog (LOG_INFO, "socket_communite func !!!\n");
+  syslog (LOG_INFO, "socket_communite func !!!\n");
 
+  if (G_IO_IN != condition) {
+    syslog (LOG_WARNING, "socket_communite condition error!!!\n");
+  }
   state->h3cs->setClientModel("192", -1);
+  gchar *output; gsize len = 0;
+  g_io_channel_read_to_end(channel, &output, &len, NULL);
+  if (0 != len) {
+    output[len-1] = 0;
+    syslog (LOG_INFO, "socket_communite info %s!!!\n", output);
+    g_free(output);
+  }
   g_io_channel_shutdown(channel, TRUE, NULL);
 #if DEBUG
-	int flags = fcntl (fd, F_GETFD);
-	if ((flags & O_NONBLOCK) == O_NONBLOCK) {
-    fprintf (stderr, "Yup, it's nonblocking.\n");
-	} else {
-    fprintf (stderr, "Nope, it's blocking.\n");
-	}
+    int flags = fcntl (fd, F_GETFD);
+    if ((flags & O_NONBLOCK) == O_NONBLOCK) {
+      fprintf (stderr, "Yup, it's nonblocking.\n");
+    } else {
+      fprintf (stderr, "Nope, it's blocking.\n");
+    }
 #endif
 
 	return G_SOURCE_CONTINUE;
