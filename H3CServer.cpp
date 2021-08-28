@@ -154,12 +154,14 @@ VOID CALLBACK IDM_DEV_Exception_Callback(
     ULONG ulType,
     VOID *pUserData) {
 
-  syslog(LOG_INFO, "IDM_DEV_Exception_Callback userID %d", lUserID);
-  syslog(LOG_INFO, "IDM_DEV_Exception_Callback Handle %d", lHandle);
-  syslog(LOG_INFO, "IDM_DEV_Exception_Callback Type %d", ulType);
-  if (0 == ulType) {
-    syslog(LOG_INFO, "Keep alive error %d", lUserID);
+  syslog(LOG_ERR, "IDM_DEV_Exception_Callback userID %d", lUserID);
+  syslog(LOG_ERR, "IDM_DEV_Exception_Callback Handle %d", lHandle);
+  syslog(LOG_ERR, "IDM_DEV_Exception_Callback Type %d", ulType);
+  H3CDefine *def = (H3CDefine*)pUserData;
+  if (0 == ulType && 3 == ulType) {
+    IDM_DEV_StopAlarmUp(lHandle);
     IDM_DEV_Logout(lUserID);
+    def->alarmH3C(lUserID);
   }
 }
 
@@ -169,6 +171,11 @@ H3CDefine::H3CDefine() {
 }
 
 H3CDefine::~H3CDefine() {
+  for (Camera &cam : cams) {
+    IDM_DEV_StopAlarmUp(cam.alarmHandle);
+    IDM_DEV_Logout(cam.userID);
+  }
+  IDM_DEV_CleanUp();
 }
 
 //TODO  init H3C cameras
@@ -178,7 +185,7 @@ void H3CDefine::initH3C(H3CServer *server) {
 
   int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
   syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
-  ret = IDM_DEV_SetExceptionCallback(IDM_DEV_Exception_Callback, (void *)0);
+  ret = IDM_DEV_SetExceptionCallback(IDM_DEV_Exception_Callback, (void *)this);
   syslog(LOG_INFO, "IDM_DEV_SetExceptionCallback ret %d", ret);
 }
 void H3CDefine::alarmH3C(int id) {
@@ -205,6 +212,9 @@ void H3CDefine::alarmH3C(int id) {
   stAlarmParam.ucLinkMode = 0;// 0xFF;
   ret = IDM_DEV_StartAlarmUp(id, stAlarmParam, &lAlarmHandle);
   syslog(LOG_INFO, "IDM_DEV_StartAlarmUp ret %d", ret);
+
+  Camera cam = {id, lAlarmHandle};
+  cams.push_back(cam);
 }
 H3CServer* H3CDefine::createServer() {
   if(js_["client"]==""){

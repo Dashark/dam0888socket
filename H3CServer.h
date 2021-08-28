@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <glib.h>
+#include <vector>
 #include "json.hpp"
 using json = nlohmann::json;
 
@@ -60,11 +61,16 @@ class H3CDefine {
  private:
   json js_;
   void initH3C(H3CServer *server);
-  void alarmH3C(int id);
+  typedef struct {
+    long userID;
+    long alarmHandle;
+  } Camera;
+  std::vector<Camera> cams;
  public:
   H3CDefine();
   ~H3CDefine();
   H3CServer* createServer();
+  void alarmH3C(int id);
  private:
   void addClientModels(H3CServer *server);
 };

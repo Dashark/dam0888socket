@@ -51,13 +51,14 @@ int main(int argc, char *argv[]) {
 
   int fd = state->h3cs->listenH3C();
   if(fd == -1) return -1;
-	loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.  
+
+  loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.  
   assert(loop != NULL);
   listenChannel(state, fd, (GIOFunc)socket_connecting);
 
-	g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
+  g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
   syslog(LOG_INFO, "LOOP quit!!!");
-	g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
+  g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
   delete state->h3cs;
   delete state;
   return 0;
