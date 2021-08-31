@@ -60,17 +60,21 @@ class ClientModel {
 class H3CDefine {
  private:
   json js_;
-  void initH3C(H3CServer *server);
   typedef struct {
+    int configID;
     long userID;
     long alarmHandle;
+    std::string ip, user, password, port;
   } Camera;
   std::vector<Camera> cams;
  public:
   H3CDefine();
   ~H3CDefine();
   H3CServer* createServer();
-  void alarmH3C(int id);
+  void initH3C(H3CServer *server);
+  void loginH3C();
+  void alarmH3C();
+  void logoutH3C(int id);
  private:
   void addClientModels(H3CServer *server);
 };

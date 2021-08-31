@@ -10,6 +10,7 @@ typedef struct _ApplicationState ApplicationState;
 struct _ApplicationState {
 
   H3CServer *h3cs;
+  H3CDefine *h3cd;
 };
 /* add callback into GLib Main Event Loop. */
 void listenChannel (ApplicationState *state, int fd, GIOFunc func);
@@ -19,12 +20,10 @@ gboolean socket_connecting (GIOChannel *channel, GIOCondition condition, gpointe
 gboolean socket_communite (GIOChannel *channel, GIOCondition condition, ApplicationState *state);
 
 /*timeout 调用函数*/
-/*
 static gboolean
-application_iterate(H3CServer *server);
+application_iterate(H3CDefine *server);
 
 #define ITERATION_PERIOD 150
-*/
 static GMainLoop *loop;
 
 /* ctrl+c 结束程序处理函数 */
@@ -42,12 +41,15 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   */
-	signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
+  signal (SIGINT, close_sigint); //Ctrl+C结束程序运行处理函数
   openlog("H3CSocket", LOG_PID|LOG_CONS|LOG_PERROR, LOG_USER);
   ApplicationState *state = new ApplicationState;
 
-  H3CDefine h3cd;
-  state->h3cs = h3cd.createServer();
+  state->h3cd = new H3CDefine();
+  state->h3cs = state->h3cd->createServer();
+  state->h3cd->initH3C(state->h3cs);
+  state->h3cd->loginH3C();
+  state->h3cd->alarmH3C();
 
   int fd = state->h3cs->listenH3C();
   if(fd == -1) return -1;
@@ -55,10 +57,12 @@ int main(int argc, char *argv[]) {
   loop = g_main_loop_new (NULL, FALSE); //Creates a new GMainLoop structure.  
   assert(loop != NULL);
   listenChannel(state, fd, (GIOFunc)socket_connecting);
+  g_timeout_add_seconds(10, (GSourceFunc)application_iterate, state->h3cd);
 
   g_main_loop_run (loop); //Runs a main loop until g_main_loop_quit() is called on the loop.
   syslog(LOG_INFO, "LOOP quit!!!");
   g_main_loop_unref (loop); //Decreases the reference count on a GMainLoop object by one. 
+  delete state->h3cd;
   delete state->h3cs;
   delete state;
   return 0;
@@ -133,14 +137,13 @@ gboolean socket_communite (GIOChannel *channel, GIOCondition condition, Applicat
 	return G_SOURCE_CONTINUE;
 }
 
-/*
 static gboolean
-application_iterate(ZLServer *server) {
-  assert(server != nullptr);
-  server->readAll();
-  * The timer will continue to call this function every second as long as it
+application_iterate(H3CDefine *h3cd) {
+  assert(h3cd != nullptr);
+  h3cd->loginH3C();
+  h3cd->alarmH3C();
+  /* The timer will continue to call this function every second as long as it
    * returns TRUE.
-   *
+   */
   return TRUE;
 }
-*/

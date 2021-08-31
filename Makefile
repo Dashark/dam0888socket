@@ -1,5 +1,5 @@
 #CXX=clang++
-CXXFLAGS=-g -std=c++11 -Wall -pedantic
+CXXFLAGS=-g -O2 -std=c++11 -Wall -pedantic
 PROG    = H3CSocket
 SRC			= $(wildcard *.cpp)
 OBJS		= $(SRC:%.cpp=%.o)

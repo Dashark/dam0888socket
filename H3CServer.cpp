@@ -143,6 +143,7 @@ VOID CALLBACK IDM_DEV_Message_Callback (
     //jstr = 
     //j["Info"] = jstr;
     //printf("Json: \n%s\n",j.dump().c_str());
+    syslog(LOG_INFO, "Send data to userID %d", lUserID);
     server->write(j.dump());
   }
 
@@ -158,16 +159,16 @@ VOID CALLBACK IDM_DEV_Exception_Callback(
   syslog(LOG_ERR, "IDM_DEV_Exception_Callback Handle %d", lHandle);
   syslog(LOG_ERR, "IDM_DEV_Exception_Callback Type %d", ulType);
   H3CDefine *def = (H3CDefine*)pUserData;
-  if (0 == ulType && 3 == ulType) {
+  if (0 == ulType || 3 == ulType) {
     IDM_DEV_StopAlarmUp(lHandle);
     IDM_DEV_Logout(lUserID);
-    def->alarmH3C(lUserID);
+    def->logoutH3C(lUserID);
   }
 }
 
 H3CDefine::H3CDefine() {
   std::ifstream i("config.json");
-    i >> js_;
+  i >> js_;
 }
 
 H3CDefine::~H3CDefine() {
@@ -175,47 +176,80 @@ H3CDefine::~H3CDefine() {
     IDM_DEV_StopAlarmUp(cam.alarmHandle);
     IDM_DEV_Logout(cam.userID);
   }
-  IDM_DEV_CleanUp();
+  IDM_DEV_Cleanup();
 }
 
 //TODO  init H3C cameras
 void H3CDefine::initH3C(H3CServer *server) {
   IDM_DEV_Init();
-  // IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
+  IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
 
   int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
   syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
   ret = IDM_DEV_SetExceptionCallback(IDM_DEV_Exception_Callback, (void *)this);
   syslog(LOG_INFO, "IDM_DEV_SetExceptionCallback ret %d", ret);
+  int id = 0;
+  for (auto &camj : js_["h3cameras"]) {
+    Camera cam;
+    cam.configID = id;
+    cam.userID = -1;
+    cam.alarmHandle = -1;
+    cam.ip = camj["ip"];
+    cam.user = camj["user"];
+    cam.password = camj["password"];
+    cam.port = camj["port"];
+    cams.push_back(cam);
+    id += 1;
+  }
 }
-void H3CDefine::alarmH3C(int id) {
-  IDM_DEV_USER_LOGIN_INFO_S loginInfo = {0};
-  IDM_DEV_DEVICE_INFO_S devInfo;
-  std::string ip = js_["h3cameras"][id]["ip"];
-  sprintf(loginInfo.szDeviceIP, "%s", ip.c_str());
-  std::string user = js_["h3cameras"][id]["user"];
-  sprintf(loginInfo.szUsername, "%s", user.c_str());
-  std::string pass = js_["h3cameras"][id]["password"];
-  sprintf(loginInfo.szPassword, "%s", pass.c_str());
-  std::string port = js_["h3cameras"][id]["port"];
-  loginInfo.usPort = std::stoi(port);
-
-  int ret = IDM_DEV_Login(loginInfo, &devInfo, &id);
-  syslog(LOG_INFO, "IDM_DEV_Login ret %d", ret);
-  std::string sub = "{\"channel_no_list\":[65535],\"event_types\":[0],\"event_levels\":[2]}";
-  IDM_DEV_ALARM_PARAM_S stAlarmParam = {0};
-  LONG lAlarmHandle = 0;
-  stAlarmParam.ulLevel = 0;
-  stAlarmParam.pcSubscribes = const_cast<char *>(sub.c_str());
-  stAlarmParam.ulSubscribesLen = sub.length();
-  stAlarmParam.ucType = 0;
-  stAlarmParam.ucLinkMode = 0;// 0xFF;
-  ret = IDM_DEV_StartAlarmUp(id, stAlarmParam, &lAlarmHandle);
-  syslog(LOG_INFO, "IDM_DEV_StartAlarmUp ret %d", ret);
-
-  Camera cam = {id, lAlarmHandle};
-  cams.push_back(cam);
+void H3CDefine::loginH3C() {
+  for (Camera &cam : cams) {
+    if (cam.userID != -1) continue;
+    syslog(LOG_WARNING, "loginH3C to %d", cam.configID);
+    IDM_DEV_USER_LOGIN_INFO_S loginInfo = {0};
+    IDM_DEV_DEVICE_INFO_S devInfo;
+    sprintf(loginInfo.szDeviceIP, "%s", cam.ip.c_str());
+    sprintf(loginInfo.szUsername, "%s", cam.user.c_str());
+    sprintf(loginInfo.szPassword, "%s", cam.password.c_str());
+    loginInfo.usPort = std::stoi(cam.port);
+    int userID = -1;
+    int ret = IDM_DEV_Login(loginInfo, &devInfo, &userID);
+    syslog(LOG_INFO, "IDM_DEV_Login ret %d && %d", ret, userID);
+    if (IDM_SUCCESS == ret) {
+      cam.userID = userID;
+    }
+  }
 }
+void H3CDefine::alarmH3C() {
+  for (Camera& cam : cams) {
+    if (-1 == cam.userID || -1 != cam.alarmHandle) continue;
+    syslog(LOG_WARNING, "alarmH3C to %d", cam.userID);
+    std::string sub = "{\"channel_no_list\":[65535],\"event_types\":[0],\"event_levels\":[2]}";
+    IDM_DEV_ALARM_PARAM_S stAlarmParam = {0};
+    LONG lAlarmHandle = 0;
+    stAlarmParam.ulLevel = 0;
+    stAlarmParam.pcSubscribes = const_cast<char *>(sub.c_str());
+    stAlarmParam.ulSubscribesLen = sub.length();
+    stAlarmParam.ucType = 0;
+    stAlarmParam.ucLinkMode = 0;// 0xFF;
+    int ret = IDM_DEV_StartAlarmUp(cam.userID, stAlarmParam, &lAlarmHandle);
+    syslog(LOG_INFO, "IDM_DEV_StartAlarmUp ret %d", ret);
+    if (IDM_SUCCESS == ret) {
+      cam.alarmHandle = lAlarmHandle;
+    }
+  }
+}
+void H3CDefine::logoutH3C(int id) {
+  for (Camera &cam : cams) {
+    if (cam.userID == id) {
+      syslog(LOG_WARNING, "logoutH3C to %d", cam.userID);
+      cam.userID = -1;
+      cam.alarmHandle = -1;
+      break;
+    }
+  }
+}
+
 H3CServer* H3CDefine::createServer() {
   if(js_["client"]==""){
    syslog(LOG_CRIT, "failed to load configuration of zlmcu. Process can't run!!!");
@@ -231,13 +265,6 @@ H3CServer* H3CDefine::createServer() {
   H3CServer *server = new H3CServer(port);
   addClientModels(server);
 
-  initH3C(server);
-  int id = 0;
-  for (auto& cam : js_["h3cameras"]) {
-    (void)cam;
-    alarmH3C(id);
-    id += 1;
-  }
   return server;
 }
 
