@@ -157,13 +157,18 @@ VOID CALLBACK IDM_DEV_Message_Callback (
   IDM_DEV_ALARM_EVENT_S *pinfo = (IDM_DEV_ALARM_EVENT_S *)pBuffer;
   std::string jstr;
   if ((0 != pinfo->stEvent.ulBufferSize) && (nullptr != pinfo->stEvent.pBuffer)) {
-    json j = json::parse(pinfo->stEvent.pBuffer);
-    j["userId"] = lUserID;
-    //jstr = 
-    //j["Info"] = jstr;
-    //printf("Json: \n%s\n",j.dump().c_str());
-    syslog(LOG_INFO, "Send data to userID %d", lUserID);
-    server->write(j.dump());
+    try {
+      json j = json::parse(pinfo->stEvent.pBuffer);
+      j["userId"] = lUserID;
+      //jstr = 
+      //j["Info"] = jstr;
+      //printf("Json: \n%s\n",j.dump().c_str());
+      syslog(LOG_INFO, "Send data to userID %d", lUserID);
+      server->write(j.dump());
+    }
+    catch (json::exception& e) {
+      syslog(LOG_ERR, "%s", e.what());
+    }
   }
 
 }
