@@ -124,7 +124,6 @@ gboolean socket_communite (GIOChannel *channel, GIOCondition condition, Applicat
     g_free(output);
   } else {
     state->h3cs->closeClientModel(g_io_channel_unix_get_fd(channel));
-    g_io_channel_unref(channel);
     g_io_channel_shutdown(channel, TRUE, NULL);
   }
 

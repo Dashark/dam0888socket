@@ -126,7 +126,7 @@ void H3CServer::setClientModel(const std::string &ip, int fd) {
 
 void H3CServer::closeClientModel(int fd) {
   std::vector<ClientModel*>::iterator it = models_.begin();
-  for(; it < models_.end(); ++it) {
+  for(; it != models_.end(); ++it) {
     if((*it)->equal(fd)) {
       (*it)->setFileDesc(-1);
       break;
