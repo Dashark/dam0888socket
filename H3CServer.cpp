@@ -41,6 +41,9 @@ H3CServer::H3CServer(int port):port_(port) {
 }
 
 H3CServer::~H3CServer() {
+  for(ClientModel *io : models_) {
+    delete io;
+  }
 
 }
 
@@ -117,9 +120,13 @@ void H3CServer::setClientModel(const std::string &ip, int fd) {
 }
 
 void H3CServer::closeClientModel(int fd) {
-  for(ClientModel *iom : models_) {
-    if(iom->equal(fd)) {
-      iom->setFileDesc(-1);
+  std::vector<ClientModel*>::iterator it = models_.begin();
+  for(; it < models_.end(); ++it) {
+    if((*it)->equal(fd)) {
+      (*it)->setFileDesc(-1);
+      delete *it;
+      models_.erase(it);
+      break;
     }
   }
 }
