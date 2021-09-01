@@ -26,7 +26,9 @@ H3CServer::ClientModel::~ClientModel() {
 }
 
 void H3CServer::ClientModel::writeInfo(const std::string &info) {
-  ::write(fd_, info.c_str(), info.size());
+  if (::write(fd_, info.c_str(), info.size()) <= 0) {
+    syslog(LOG_ERR, "write info error %d", errno);
+  }
 }
 
 bool H3CServer::ClientModel::setFileDesc(int fd) {
