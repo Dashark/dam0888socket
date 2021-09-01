@@ -80,13 +80,13 @@ int H3CServer::clientConnected() {
     return -1;  //wrong server
   struct sockaddr_in *client = new struct sockaddr_in;
   socklen_t len = sizeof(struct sockaddr_in);
-	int newfd = accept (socket_fd_, (struct sockaddr*)client, &len);
-	if (newfd == -1) {
+  int newfd = accept (socket_fd_, (struct sockaddr*)client, &len);
+  if (newfd == -1) {
     syslog (LOG_ERR, "Server accept error (fd = %d)", socket_fd_);
-	} else {
+  } else {
     char *ip = inet_ntoa(client->sin_addr);
-		syslog (LOG_INFO, "fd = %d, New connection from %s:%d on socket %d\n",
-				socket_fd_, ip, client->sin_port, newfd);
+    syslog (LOG_INFO, "fd = %d, New connection from %s:%d on socket %d\n",
+            socket_fd_, ip, client->sin_port, newfd);
     setClientModel(ip, newfd);  //TODO Jave client....
   }
   delete client;
@@ -116,9 +116,18 @@ void H3CServer::setClientModel(const std::string &ip, int fd) {
   }
 }
 
+void H3CServer::closeClientModel(int fd) {
+  for(ClientModel *iom : models_) {
+    if(iom->equal(fd)) {
+      iom->setFileDesc(-1);
+    }
+  }
+}
+  
 bool H3CServer::write(const std::string &info) {
-  H3CServer::ClientModel *cm = findClientModel("192");
-  cm->writeInfo(info);
+  for(ClientModel *iom : models_) {
+    iom->writeInfo(info);
+  }
   return true;
 }
 
@@ -182,7 +191,7 @@ H3CDefine::~H3CDefine() {
 //TODO  init H3C cameras
 void H3CDefine::initH3C(H3CServer *server) {
   IDM_DEV_Init();
-  IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
+  // IDM_DEV_SaveLogToFile(3, 0, "/home/huawei/");
 
   int ret = IDM_DEV_SetAlarmCallback(0, IDM_DEV_Message_Callback,(void *)server);
   syslog(LOG_INFO, "IDM_DEV_SetAlarmCallback ret %d", ret);
@@ -223,7 +232,7 @@ void H3CDefine::loginH3C() {
 void H3CDefine::alarmH3C() {
   for (Camera& cam : cams) {
     if (-1 == cam.userID || -1 != cam.alarmHandle) continue;
-    syslog(LOG_WARNING, "alarmH3C to %d", cam.userID);
+    syslog(LOG_WARNING, "alarmH3C to %ld", cam.userID);
     std::string sub = "{\"channel_no_list\":[65535],\"event_types\":[0],\"event_levels\":[2]}";
     IDM_DEV_ALARM_PARAM_S stAlarmParam = {0};
     LONG lAlarmHandle = 0;
@@ -242,7 +251,7 @@ void H3CDefine::alarmH3C() {
 void H3CDefine::logoutH3C(int id) {
   for (Camera &cam : cams) {
     if (cam.userID == id) {
-      syslog(LOG_WARNING, "logoutH3C to %d", cam.userID);
+      syslog(LOG_WARNING, "logoutH3C to %ld", cam.userID);
       cam.userID = -1;
       cam.alarmHandle = -1;
       break;

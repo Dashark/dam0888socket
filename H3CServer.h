@@ -24,13 +24,14 @@ class ClientModel {
     // return ip_ == ip ? true : false;
     return true;
   }
-  /*bool equal(int fd) const {
+  bool equal(int fd) const {
     return fd_ == fd ? true : false;
-    }*/
+  }
+  /*
   bool equal(int id) const {
     // return slaveID_ == id ? true : false;
     return true;
-  }
+  }*/
 
   void writeInfo(const std::string &info);
   bool setFileDesc(int fd);
@@ -51,9 +52,10 @@ class ClientModel {
   //bool readAll();  //TODO it's callback func
   bool write(const std::string &info);
   void createClientModel(const std::string &ip, int id);
-  void setClientModel(const std::string &ip, int fd);
+  void closeClientModel(int fd);
  private:
   ClientModel* findClientModel(const std::string &ip);
+  void setClientModel(const std::string &ip, int fd);
 
 };
 

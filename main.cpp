@@ -116,15 +116,18 @@ gboolean socket_communite (GIOChannel *channel, GIOCondition condition, Applicat
   if (G_IO_IN != condition) {
     syslog (LOG_WARNING, "socket_communite condition error!!!\n");
   }
-  state->h3cs->setClientModel("192", -1);
   gchar *output; gsize len = 0;
   g_io_channel_read_to_end(channel, &output, &len, NULL);
   if (0 != len) {
     output[len-1] = 0;
     syslog (LOG_INFO, "socket_communite info %s!!!\n", output);
     g_free(output);
+  } else {
+    state->h3cs->closeClientModel(g_io_channel_unix_get_fd(channel));
+    g_io_channel_unref(channel);
+    g_io_channel_shutdown(channel, TRUE, NULL);
   }
-  g_io_channel_shutdown(channel, TRUE, NULL);
+
 #if DEBUG
     int flags = fcntl (fd, F_GETFD);
     if ((flags & O_NONBLOCK) == O_NONBLOCK) {
