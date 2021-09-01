@@ -26,8 +26,10 @@ H3CServer::ClientModel::~ClientModel() {
 }
 
 void H3CServer::ClientModel::writeInfo(const std::string &info) {
-  if (::write(fd_, info.c_str(), info.size()) <= 0) {
-    syslog(LOG_ERR, "write info error %d", errno);
+  if (fd_ != -1) {
+    if (::write(fd_, info.c_str(), info.size()) <= 0) {
+      syslog(LOG_ERR, "write info error %d", errno);
+    }
   }
 }
 
@@ -115,8 +117,9 @@ H3CServer::ClientModel* H3CServer::findClientModel(const std::string &ip) {
 
 void H3CServer::setClientModel(const std::string &ip, int fd) {
   for(ClientModel *iom : models_) {
-    if(iom->equal(ip)) {
+    if(iom->equal(-1)) {
       iom->setFileDesc(fd);
+      break;
     }
   }
 }
@@ -126,8 +129,6 @@ void H3CServer::closeClientModel(int fd) {
   for(; it < models_.end(); ++it) {
     if((*it)->equal(fd)) {
       (*it)->setFileDesc(-1);
-      delete *it;
-      models_.erase(it);
       break;
     }
   }
