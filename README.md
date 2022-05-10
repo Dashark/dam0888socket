@@ -1,2 +1,6 @@
-# dam0888socket
-Device: DAM0888
+# H3C的客户端
+
+接收H3C摄像头的数据（车牌），然后转发给远程应用。
+
+- 配置来自JSON
+- 需要H3C的SDK
